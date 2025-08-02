@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Formulario de Actividades</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Formulario de Actividades</h1>
+  <form id="actividad-form">
+    <label>Responsable: <input type="text" id="responsable" required></label><br>
+    <label>Actividad: <input type="text" id="actividad" required></label><br>
+    <label>Comentarios: <textarea id="comentarios"></textarea></label><br>
+    <label>Foto: <input type="file" id="foto" accept="image/*"></label><br>
+    <button type="submit">Guardar Actividad</button>
+  </form>
+
+  <h2>Historial</h2>
+  <ul id="historial"></ul>
+
+  <script src="app.js"></script>
+</body>
+</html>
