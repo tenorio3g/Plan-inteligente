@@ -1,6 +1,9 @@
+
 function pedirNumeroEmpleado() {
   const numero = prompt("Ingrese su número de empleado:");
+
   if (!numero) return;
+
   localStorage.setItem("empleadoId", numero);
   window.location.reload();
 }
