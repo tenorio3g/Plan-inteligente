@@ -1,15 +1,83 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>PWA Roles</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formulario de Actividades</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+
+    h2 {
+      color: #333;
+    }
+
+    form {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+
+    input, textarea, button {
+      width: 100%;
+      margin-top: 5px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background: #007BFF;
+      color: white;
+      border: none;
+      margin-top: 15px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #actividadesEmpleado > div {
+      background: white;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+    }
+
+    img {
+      margin-top: 10px;
+      border-radius: 5px;
+    }
+
+    .cambiar-usuario {
+      margin-top: 30px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
+
+  <h1>Registro de Actividades</h1>
   <div id="formulario-container"></div>
 
+  <div class="cambiar-usuario">
+    <button onclick="localStorage.clear(); location.reload();">Cambiar de usuario</button>
+  </div>
+
+  <!-- Scripts -->
   <script src="login.js"></script>
   <script src="main.js"></script>
   <script src="data.js"></script>
+
 </body>
 </html>
