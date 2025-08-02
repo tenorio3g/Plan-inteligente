@@ -1,16 +1,13 @@
-
 {
-  "name": "Gestión de Actividades",
+  "name": "PWA Actividades",
   "short_name": "Actividades",
-  "start_url": "./",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#ffffff",
-  "icons": [
-    {
-      "src": "icon.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    }
-  ]
+  "description": "App para gestionar actividades offline.",
+  "icons": [{
+    "src": "icon.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }]
 }
