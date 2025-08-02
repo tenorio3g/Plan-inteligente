@@ -3,23 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Formulario de Actividades</title>
+  <title>Actividades</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Formulario de Actividades</h1>
-  <form id="actividad-form">
-    <label>Responsable: <input type="text" id="responsable" required></label><br>
-    <label>Actividad: <input type="text" id="actividad" required></label><br>
-    <label>Comentarios: <textarea id="comentarios"></textarea></label><br>
-    <label>Foto: <input type="file" id="foto" accept="image/*"></label><br>
-    <button type="submit">Guardar Actividad</button>
-  </form>
+  <h1>Actividades</h1>
+  <div id="login-section">
+    <label>Número de Empleado: <input type="text" id="empleado" /></label>
+    <button onclick="iniciarSesion()">Ingresar</button>
+  </div>
 
-  <h2>Historial</h2>
-  <ul id="historial"></ul>
+  <div id="app-section" style="display:none;">
+    <h2 id="bienvenida"></h2>
+    <form id="actividad-form">
+      <label>Actividad: <input type="text" id="actividad" required></label><br>
+      <label>Comentarios: <textarea id="comentarios"></textarea></label><br>
+      <label>Foto: <input type="file" id="foto" accept="image/*"></label><br>
+      <button type="submit">Guardar Actividad</button>
+    </form>
 
+    <h2>Historial</h2>
+    <ul id="historial"></ul>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

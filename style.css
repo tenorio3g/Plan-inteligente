@@ -9,3 +9,6 @@ input, textarea {
   padding: 10px;
   box-sizing: border-box;
 }
+img {
+  margin-top: 5px;
+}

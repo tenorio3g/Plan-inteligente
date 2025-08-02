@@ -1,10 +1,10 @@
 {
-  "name": "Formulario de Actividades",
+  "name": "Actividades",
   "short_name": "Actividades",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
-  "description": "App para registrar actividades offline y sincronizar online.",
+  "description": "App para registrar y consultar actividades por empleado.",
   "icons": [{
     "src": "icon.png",
     "sizes": "192x192",
