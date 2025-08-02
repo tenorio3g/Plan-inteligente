@@ -1,9 +1,13 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PWA Actividades</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.png">
+  <meta name="theme-color" content="#ffffff"/>
   <style>
     body { font-family: sans-serif; padding: 1rem; background: #f4f4f4; }
     .hidden { display: none; }
@@ -107,6 +111,21 @@
         contenedor.appendChild(div);
       }
     });
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').then(reg => {
+      reg.onupdatefound = () => {
+        const nuevoSW = reg.installing;
+        nuevoSW.onstatechange = () => {
+          if (nuevoSW.state === 'installed' && navigator.serviceWorker.controller) {
+            if (confirm('Nueva versión disponible. ¿Desea actualizar?')) {
+              window.location.reload();
+            }
+          }
+        };
+      };
+    }).catch(err => console.error('SW fallo al registrar:', err));
   }
 </script>
 

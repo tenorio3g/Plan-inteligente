@@ -1,5 +1,5 @@
-const CACHE_NAME = 'form-cache-v2'; // ⚠️ Cambia el número en cada actualización
 
+const CACHE_NAME = 'form-cache-v2';
 const FILES_TO_CACHE = [
   './',
   './index.html',
@@ -8,37 +8,26 @@ const FILES_TO_CACHE = [
   './icon.png'
 ];
 
-// Instalación del SW
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(FILES_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(FILES_TO_CACHE))
   );
-  self.skipWaiting(); // Forzar que se active al instalar
+  self.skipWaiting();
 });
 
-// Activación: limpia caches viejas
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
+    caches.keys().then(keys => Promise.all(
+      keys.map(key => {
+        if (key !== CACHE_NAME) return caches.delete(key);
+      })
+    ))
   );
   self.clients.claim();
 });
 
-// Fetch: sirve desde cache si está disponible
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(response => {
-      return response || fetch(e.request);
-    })
+    caches.match(e.request).then(res => res || fetch(e.request))
   );
 });
