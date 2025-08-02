@@ -1,83 +1,121 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Formulario de Actividades</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro de Actividades</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
       background: #f4f4f4;
+      padding: 20px;
+      margin: 0;
     }
 
-    h2 {
+    h1 {
+      text-align: center;
       color: #333;
     }
 
     form {
+      max-width: 600px;
+      margin: auto;
       background: white;
-      padding: 15px;
-      border-radius: 10px;
+      padding: 20px;
+      border-radius: 8px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
     label {
       display: block;
-      margin-top: 10px;
+      margin-top: 15px;
+      font-weight: bold;
     }
 
-    input, textarea, button {
+    input, select, textarea {
       width: 100%;
-      margin-top: 5px;
       padding: 8px;
+      margin-top: 5px;
+      border-radius: 4px;
       border: 1px solid #ccc;
-      border-radius: 5px;
     }
 
     button {
-      background: #007BFF;
-      color: white;
+      margin-top: 20px;
+      padding: 10px;
+      width: 100%;
+      background-color: #007bff;
       border: none;
-      margin-top: 15px;
+      color: white;
+      font-size: 16px;
       cursor: pointer;
+      border-radius: 4px;
     }
 
     button:hover {
-      background: #0056b3;
+      background-color: #0056b3;
     }
 
-    #actividadesEmpleado > div {
-      background: white;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 8px;
-    }
-
-    img {
-      margin-top: 10px;
-      border-radius: 5px;
-    }
-
-    .cambiar-usuario {
-      margin-top: 30px;
+    .message {
       text-align: center;
+      margin-top: 20px;
+      color: green;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-
   <h1>Registro de Actividades</h1>
-  <div id="formulario-container"></div>
+  <form id="activity-form">
+    <label for="empleado">Asignar a:</label>
+    <select id="empleado" name="empleado" required>
+      <option value="">Selecciona un empleado</option>
+      <option value="Juan">Juan</option>
+      <option value="Ana">Ana</option>
+      <option value="Pedro">Pedro</option>
+    </select>
 
-  <div class="cambiar-usuario">
-    <button onclick="localStorage.clear(); location.reload();">Cambiar de usuario</button>
-  </div>
+    <label for="actividad">Actividad:</label>
+    <input type="text" id="actividad" name="actividad" required />
 
-  <!-- Scripts -->
-  <script src="login.js"></script>
-  <script src="main.js"></script>
-  <script src="data.js"></script>
+    <label for="inicio">Hora de inicio:</label>
+    <input type="time" id="inicio" name="inicio" required />
 
+    <label for="fin">Hora de finalización:</label>
+    <input type="time" id="fin" name="fin" required />
+
+    <label for="comentarios">Comentarios:</label>
+    <textarea id="comentarios" name="comentarios" rows="4"></textarea>
+
+    <button type="submit">Registrar actividad</button>
+    <div class="message" id="mensaje"></div>
+  </form>
+
+  <script>
+    document.getElementById('activity-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const empleado = document.getElementById('empleado').value;
+      const actividad = document.getElementById('actividad').value;
+      const inicio = document.getElementById('inicio').value;
+      const fin = document.getElementById('fin').value;
+      const comentarios = document.getElementById('comentarios').value;
+
+      const mensaje = document.getElementById('mensaje');
+      mensaje.textContent = `Actividad registrada para ${empleado} de ${inicio} a ${fin}.`;
+
+      // Aquí podría enviar a un servidor en el futuro con fetch() o guardar localmente
+      console.log({
+        empleado,
+        actividad,
+        inicio,
+        fin,
+        comentarios
+      });
+
+      // Limpiar formulario después de registrar
+      this.reset();
+    });
+  </script>
 </body>
 </html>
