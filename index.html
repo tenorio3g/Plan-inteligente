@@ -1,45 +1,82 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>PWA Actividades</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestión de Actividades</title>
   <style>
-    body { font-family: sans-serif; padding: 1rem; background: #f4f4f4; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #eef2f7;
+      padding: 2rem;
+      color: #333;
+    }
+    h1, h2 {
+      color: #2c3e50;
+    }
     .hidden { display: none; }
-    .modal {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;
+    .modal, .card, #adminPanel {
+      background: white;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-top: 1rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
-    .modal-content {
-      background: white; padding: 2rem; border-radius: 8px; text-align: center;
+    input, textarea, button {
+      margin: 0.4rem 0;
+      padding: 0.6rem;
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 5px;
     }
-    textarea, input, button { margin: 0.5rem 0; padding: 0.5rem; width: 100%; }
-    .card { background: white; padding: 1rem; border-radius: 6px; margin-top: 1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    img { max-width: 100px; margin-top: 0.5rem; }
-    .admin-buttons button { margin-right: 0.5rem; }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    img {
+      max-width: 150px;
+      margin-top: 0.5rem;
+      display: block;
+    }
+    .card {
+      margin-bottom: 1rem;
+    }
+    .card small {
+      color: #555;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
   </style>
 </head>
 <body>
 
 <div class="modal" id="loginModal">
-  <div class="modal-content">
-    <h2>Ingrese su número de empleado</h2>
-    <input type="text" id="employeeId" placeholder="Ejemplo: 0001">
-    <button onclick="login()">Entrar</button>
-  </div>
+  <h2>Ingrese su número de empleado</h2>
+  <input type="text" id="employeeId" placeholder="Ej: 0001">
+  <button onclick="login()">Entrar</button>
 </div>
 
 <h1 id="title">Gestión de Actividades</h1>
 
 <div id="adminPanel" class="hidden">
-  <h2>Formulario de actividad</h2>
-  <input type="text" id="titulo" placeholder="Título de actividad">
-  <textarea id="comentario" placeholder="Comentario"></textarea>
-  <input type="file" id="foto" accept="image/*">
+  <h2>Crear o Editar Actividad</h2>
+  <input type="hidden" id="editIndex" value="">
+  <input type="text" id="titulo" placeholder="Título">
+  <textarea id="comentario" placeholder="Comentario del administrador"></textarea>
   <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)">
+  <input type="file" id="foto" accept="image/*">
   <button onclick="guardarActividad()">Guardar</button>
-  <button onclick="resetActividades()">Resetear Todo</button>
+  <button onclick="resetearActividades()" style="background: red; color: white;">Resetear Todo</button>
 </div>
 
 <div id="tareasAsignadas" class="hidden">
@@ -48,17 +85,20 @@
 </div>
 
 <script>
-  let actividades = JSON.parse(localStorage.getItem("actividades") || "[]");
   let usuarioActual = null;
+  let actividades = JSON.parse(localStorage.getItem("actividades") || "[]");
 
   function login() {
     const id = document.getElementById("employeeId").value.trim();
     if (!id) return alert("Ingrese un ID válido");
+
     usuarioActual = id;
     document.getElementById("loginModal").style.display = "none";
+
     if (id === "0001") {
       document.getElementById("adminPanel").classList.remove("hidden");
     }
+
     document.getElementById("tareasAsignadas").classList.remove("hidden");
     mostrarTareas();
   }
@@ -68,73 +108,120 @@
     const comentario = document.getElementById("comentario").value;
     const asignado = document.getElementById("asignado").value;
     const fotoInput = document.getElementById("foto");
+    const editIndex = document.getElementById("editIndex").value;
 
     const reader = new FileReader();
-    reader.onload = function (e) {
-      const nueva = { id: Date.now(), titulo, comentario, asignado, foto: e.target.result };
-      actividades.push(nueva);
+    const actividadBase = { titulo, comentario, asignado, estado: "pendiente", inicio: "", fin: "", comentariosUsuario: "" };
+
+    reader.onload = function(e) {
+      actividadBase.foto = e.target.result;
+      finalizarGuardado();
+    };
+
+    function finalizarGuardado() {
+      if (editIndex) {
+        actividades[editIndex] = { ...actividadBase, foto: actividadBase.foto || actividades[editIndex].foto };
+      } else {
+        actividades.push(actividadBase);
+      }
       localStorage.setItem("actividades", JSON.stringify(actividades));
+      document.getElementById("editIndex").value = "";
       mostrarTareas();
       alert("Actividad guardada");
-    };
+    }
 
     if (fotoInput.files[0]) {
       reader.readAsDataURL(fotoInput.files[0]);
     } else {
-      const nueva = { id: Date.now(), titulo, comentario, asignado, foto: "" };
-      actividades.push(nueva);
-      localStorage.setItem("actividades", JSON.stringify(actividades));
-      mostrarTareas();
-      alert("Actividad guardada sin imagen");
+      actividadBase.foto = editIndex ? actividades[editIndex].foto : "";
+      finalizarGuardado();
     }
   }
 
   function mostrarTareas() {
     const contenedor = document.getElementById("listaTareas");
     contenedor.innerHTML = "";
-    actividades.forEach((act, index) => {
+
+    actividades.forEach((act, i) => {
       if (usuarioActual === "0001" || act.asignado === usuarioActual) {
         const div = document.createElement("div");
         div.className = "card";
+
+        let botonesAdmin = "";
+        if (usuarioActual === "0001") {
+          botonesAdmin = `
+            <button onclick="editarActividad(${i})">Editar</button>
+            <button onclick="eliminarActividad(${i})" style="background:#e74c3c">Eliminar</button>
+          `;
+        }
+
+        let botonesUsuario = "";
+        if (usuarioActual === act.asignado) {
+          botonesUsuario = `
+            <button onclick="iniciarActividad(${i})">Iniciar</button>
+            <button onclick="finalizarActividad(${i})">Finalizar</button>
+            <textarea placeholder="Comentario personal" onchange="guardarComentario(${i}, this.value)">${act.comentariosUsuario}</textarea>
+          `;
+        }
+
         div.innerHTML = `
           <strong>${act.titulo}</strong><br>
           <em>Asignado a: ${act.asignado}</em><br>
-          ${act.comentario}<br>
-          ${act.foto ? `<img src="${act.foto}"><br>` : ""}
-          ${usuarioActual === "0001" ? `
-            <div class="admin-buttons">
-              <button onclick="editarActividad(${act.id})">Editar</button>
-              <button onclick="eliminarActividad(${act.id})">Eliminar</button>
-            </div>
-          ` : ""}
+          <small>Estado: ${act.estado}</small><br>
+          <small>Inicio: ${act.inicio || "No iniciado"}</small><br>
+          <small>Fin: ${act.fin || "Sin finalizar"}</small><br>
+          <p>${act.comentario}</p>
+          ${act.foto ? `<img src="${act.foto}">` : ""}
+          ${botonesUsuario}
+          ${botonesAdmin}
         `;
         contenedor.appendChild(div);
       }
     });
   }
 
-  function editarActividad(id) {
-    const act = actividades.find(a => a.id === id);
-    if (act) {
-      document.getElementById("titulo").value = act.titulo;
-      document.getElementById("comentario").value = act.comentario;
-      document.getElementById("asignado").value = act.asignado;
-      eliminarActividad(id);
+  function editarActividad(index) {
+    const act = actividades[index];
+    document.getElementById("titulo").value = act.titulo;
+    document.getElementById("comentario").value = act.comentario;
+    document.getElementById("asignado").value = act.asignado;
+    document.getElementById("editIndex").value = index;
+    alert("Listo para editar. Modifica y guarda.");
+  }
+
+  function eliminarActividad(index) {
+    if (confirm("¿Seguro que deseas eliminar esta actividad?")) {
+      actividades.splice(index, 1);
+      localStorage.setItem("actividades", JSON.stringify(actividades));
+      mostrarTareas();
     }
   }
 
-  function eliminarActividad(id) {
-    actividades = actividades.filter(a => a.id !== id);
-    localStorage.setItem("actividades", JSON.stringify(actividades));
-    mostrarTareas();
-  }
-
-  function resetActividades() {
-    if (confirm("¿Estás seguro de borrar todas las actividades?")) {
+  function resetearActividades() {
+    if (confirm("¿Seguro que quieres borrar TODAS las actividades?")) {
       actividades = [];
       localStorage.removeItem("actividades");
       mostrarTareas();
     }
+  }
+
+  function iniciarActividad(index) {
+    actividades[index].estado = "en progreso";
+    actividades[index].inicio = new Date().toLocaleString();
+    localStorage.setItem("actividades", JSON.stringify(actividades));
+    mostrarTareas();
+  }
+
+  function finalizarActividad(index) {
+    actividades[index].estado = "finalizado";
+    actividades[index].fin = new Date().toLocaleString();
+    localStorage.setItem("actividades", JSON.stringify(actividades));
+    mostrarTareas();
+  }
+
+  function guardarComentario(index, texto) {
+    actividades[index].comentariosUsuario = texto;
+    localStorage.setItem("actividades", JSON.stringify(actividades));
   }
 </script>
 
