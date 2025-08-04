@@ -23,8 +23,12 @@
       <input type="text" id="titulo" placeholder="Título" />
       <textarea id="comentario" placeholder="Comentario"></textarea>
       <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
-      <button onclick="guardarActividad()">Guardar</button>
-      <canvas id="graficoCumplidas" width="400" height="200"></canvas>
+
+      <label>Fecha límite:</label>
+      <input type="date" id="fecha" />
+
+      <label>Imagen adjunta (opcional):</label>
+      <input type="file" id="imagen" accept="image/*" />
       <div id="progresoAdmin"></div>
     </div>
 
