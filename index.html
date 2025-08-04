@@ -7,30 +7,27 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="container">
     <h1>Gestión de Actividades</h1>
-
     <div id="login">
       <input type="text" id="employeeId" placeholder="Número de empleado" />
       <button onclick="login()">Entrar</button>
     </div>
-
     <div id="adminPanel" class="hidden">
       <h2>Crear Actividad</h2>
       <input type="text" id="titulo" placeholder="Título" />
       <textarea id="comentario" placeholder="Comentario"></textarea>
       <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
+      <input type="date" id="fechaProgramada" />
       <button onclick="guardarActividad()">Guardar</button>
       <canvas id="graficoCumplidas" width="400" height="200"></canvas>
+      <canvas id="graficoPorcentaje" width="400" height="200"></canvas>
     </div>
-
     <div id="listaTareas"></div>
-    <button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
   </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
