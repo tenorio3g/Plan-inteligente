@@ -147,3 +147,11 @@ function cargarGrafico() {
     });
   });
 }
+// Exponer funciones al entorno global
+window.login = login;
+window.logout = logout;
+window.guardarActividad = guardarActividad;
+window.eliminarActividad = eliminarActividad;
+window.editarActividad = editarActividad;
+window.cambiarEstado = cambiarEstado;
+window.agregarComentario = agregarComentario;
