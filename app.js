@@ -1,9 +1,9 @@
-
+// Configuración de Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyDPWYVBgVpkBhJdMvlhPV3JzCJHF-za7Us",
+  apiKey: "TU_API_KEY",
   authDomain: "tareas-inteligentes.firebaseapp.com",
   projectId: "tareas-inteligentes",
-  storageBucket: "tareas-inteligentes.firebasestorage.app",
+  storageBucket: "tareas-inteligentes.appspot.com",
   messagingSenderId: "1016472192983",
   appId: "1:1016472192983:web:369bbf0942a95e5ccbad92",
   measurementId: "G-QM9K6W0C4Q"
@@ -12,93 +12,172 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let usuario = null;
-let tareasRef = db.collection("actividades");
+let currentUser = null;
+const adminId = "0001";
 
+// LOGIN
 function login() {
-  usuario = document.getElementById("employeeId").value.trim();
-  if (!usuario) return alert("ID inválido");
-
+  const id = document.getElementById("employeeId").value.trim();
+  if (!id) return alert("Ingresa tu número de empleado");
+  currentUser = id;
   document.getElementById("login").classList.add("hidden");
-  if (usuario === "0001") {
+  document.getElementById("listaTareas").classList.remove("hidden");
+
+  if (currentUser === adminId) {
     document.getElementById("adminPanel").classList.remove("hidden");
-    graficar();
+    cargarGrafico();
   }
+
   mostrarTareas();
 }
 
-function guardarActividad() {
-  const titulo = document.getElementById("titulo").value;
-  const comentario = document.getElementById("comentario").value;
-  const asignado = document.getElementById("asignado").value;
-  if (!titulo || !comentario || !asignado) return alert("Faltan datos");
-  tareasRef.add({ titulo, comentario, asignado, estado: "pendiente", comentarios: [] });
-  document.getElementById("titulo").value = "";
-  document.getElementById("comentario").value = "";
-  document.getElementById("asignado").value = "";
+// CERRAR SESIÓN
+function logout() {
+  currentUser = null;
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("adminPanel").classList.add("hidden");
+  document.getElementById("listaTareas").classList.add("hidden");
+  document.getElementById("listaTareas").innerHTML = "";
 }
 
+// GUARDAR NUEVA ACTIVIDAD
+function guardarActividad() {
+  const titulo = document.getElementById("titulo").value.trim();
+  const comentario = document.getElementById("comentario").value.trim();
+  const asignado = document.getElementById("asignado").value.trim();
+  if (!titulo || !asignado) return alert("Título y asignación son obligatorios");
+
+  db.collection("actividades").add({
+    titulo,
+    comentario,
+    asignado,
+    estado: "pendiente",
+    comentarios: [],
+    creada: new Date()
+  }).then(() => {
+    document.getElementById("titulo").value = "";
+    document.getElementById("comentario").value = "";
+    document.getElementById("asignado").value = "";
+    mostrarTareas();
+    cargarGrafico();
+  });
+}
+
+// MOSTRAR ACTIVIDADES
 function mostrarTareas() {
-  tareasRef.onSnapshot(snapshot => {
-    const cont = document.getElementById("listaTareas");
-    cont.innerHTML = "";
+  db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
+    const lista = document.getElementById("listaTareas");
+    lista.innerHTML = "";
+
     snapshot.forEach(doc => {
-      const tarea = doc.data();
+      const data = doc.data();
+      const id = doc.id;
+
+      if (currentUser !== adminId && currentUser !== data.asignado) return;
+
       const div = document.createElement("div");
       div.className = "tarea";
-      div.innerHTML = \`
-        <strong>\${tarea.titulo}</strong><br>
-        Asignado a: \${tarea.asignado}<br>
-        <em>\${tarea.comentario}</em><br>
-        Estado: <span class="estado">\${tarea.estado}</span><br>
-        \${usuario === "0001" ? 
-          '<button onclick="editarTarea(\'' + doc.id + '\')">Editar</button><button onclick="eliminarTarea(\'' + doc.id + '\')">Eliminar</button>' :
-          tarea.asignado === usuario && tarea.estado !== "finalizado" ? '<button onclick="cambiarEstado(\'' + doc.id + '\', \'iniciado\')">Iniciar</button><button onclick="cambiarEstado(\'' + doc.id + '\', \'finalizado\')">Finalizar</button>' : ''
-        }
-        \${tarea.comentarios && tarea.comentarios.length > 0 ? '<br><strong>Comentarios:</strong><ul>' + tarea.comentarios.map(c => '<li>' + c + '</li>').join('') + '</ul>' : ''}
-        \${usuario !== "0001" && tarea.asignado === usuario && tarea.estado !== "finalizado" ? '<input placeholder="Comentario" onkeydown="if(event.key==\'Enter\'){ agregarComentario(\'' + doc.id + '\', this.value); this.value=\'\'}">' : ''}
-      \`;
-      cont.appendChild(div);
+      div.innerHTML = `
+        <h3>${data.titulo}</h3>
+        <p><strong>Asignado a:</strong> ${data.asignado}</p>
+        <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
+        <p><strong>Estado:</strong> ${data.estado}</p>
+        ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
+        ${currentUser === adminId ? `
+          <button onclick="editarActividad('${id}')">Editar</button>
+          <button onclick="eliminarActividad('${id}')">Eliminar</button>
+        ` : ""}
+        ${currentUser !== adminId && data.asignado === currentUser && data.estado !== "finalizado" ? `
+          <button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>
+          <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
+          <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
+          <button onclick="agregarComentario('${id}')">Comentar</button>
+        ` : ""}
+      `;
+      lista.appendChild(div);
     });
   });
 }
 
-function editarTarea(id) {
+// CAMBIAR ESTADO DE ACTIVIDAD
+function cambiarEstado(id, nuevoEstado) {
+  db.collection("actividades").doc(id).update({ estado: nuevoEstado });
+}
+
+// AGREGAR COMENTARIO
+function agregarComentario(id) {
+  const comentario = document.getElementById(`comentario-${id}`).value.trim();
+  if (!comentario) return;
+
+  db.collection("actividades").doc(id).update({
+    comentarios: firebase.firestore.FieldValue.arrayUnion({
+      usuario: currentUser,
+      texto: comentario
+    })
+  }).then(() => {
+    document.getElementById(`comentario-${id}`).value = "";
+  });
+}
+
+// ELIMINAR ACTIVIDAD
+function eliminarActividad(id) {
+  if (confirm("¿Seguro que deseas eliminar esta actividad?")) {
+    db.collection("actividades").doc(id).delete();
+  }
+}
+
+// EDITAR ACTIVIDAD (básico - reemplaza)
+function editarActividad(id) {
   const nuevoTitulo = prompt("Nuevo título:");
-  if (nuevoTitulo) tareasRef.doc(id).update({ titulo: nuevoTitulo });
-}
+  const nuevoComentario = prompt("Nuevo comentario:");
+  const nuevoAsignado = prompt("Nuevo asignado:");
 
-function eliminarTarea(id) {
-  if (confirm("¿Eliminar tarea?")) tareasRef.doc(id).delete();
-}
-
-function cambiarEstado(id, estado) {
-  tareasRef.doc(id).update({ estado });
-}
-
-function agregarComentario(id, comentario) {
-  tareasRef.doc(id).update({
-    comentarios: firebase.firestore.FieldValue.arrayUnion(usuario + ": " + comentario)
-  });
-}
-
-function graficar() {
-  tareasRef.get().then(snapshot => {
-    const data = {};
-    snapshot.forEach(doc => {
-      const tarea = doc.data();
-      if (tarea.estado === "finalizado") {
-        data[tarea.asignado] = (data[tarea.asignado] || 0) + 1;
-      }
+  if (nuevoTitulo && nuevoAsignado) {
+    db.collection("actividades").doc(id).update({
+      titulo: nuevoTitulo,
+      comentario: nuevoComentario,
+      asignado: nuevoAsignado
     });
-    const ctx = document.createElement("canvas");
-    document.getElementById("graficoCumplidas").appendChild(ctx);
+  }
+}
+
+// GRAFICO DE CUMPLIMIENTO
+function cargarGrafico() {
+  db.collection("actividades").get().then(snapshot => {
+    const counts = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if (!counts[data.asignado]) counts[data.asignado] = 0;
+      if (data.estado === "finalizado") counts[data.asignado]++;
+    });
+
+    const ctx = document.getElementById("graficoCumplidas").getContext("2d");
     new Chart(ctx, {
       type: "bar",
       data: {
-        labels: Object.keys(data),
-        datasets: [{ label: "Tareas cumplidas", data: Object.values(data), backgroundColor: "green" }]
+        labels: Object.keys(counts),
+        datasets: [{
+          label: "Tareas cumplidas",
+          data: Object.values(counts),
+          backgroundColor: "rgba(75,192,192,0.6)"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: "Tareas finalizadas por usuario" }
+        }
       }
     });
   });
 }
+
+// Exponer logout en global para HTML
+window.login = login;
+window.logout = logout;
+window.guardarActividad = guardarActividad;
+window.eliminarActividad = eliminarActividad;
+window.editarActividad = editarActividad;
+window.cambiarEstado = cambiarEstado;
+window.agregarComentario = agregarComentario;
