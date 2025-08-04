@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,20 +11,28 @@
 <body>
   <div class="container">
     <h1>Gestión de Actividades</h1>
+
     <div id="login">
       <input type="text" id="employeeId" placeholder="Número de empleado" />
       <button onclick="login()">Entrar</button>
     </div>
+
     <div id="adminPanel" class="hidden">
       <h2>Crear Actividad</h2>
       <input type="text" id="titulo" placeholder="Título" />
       <textarea id="comentario" placeholder="Comentario"></textarea>
       <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
       <button onclick="guardarActividad()">Guardar</button>
-      <div id="graficoCumplidas"></div>
+      <canvas id="graficoCumplidas" width="400" height="200"></canvas>
     </div>
+
     <div id="listaTareas"></div>
+
+    <div id="logoutPanel" class="hidden" style="margin-top: 20px;">
+      <button onclick="logout()">Cerrar sesión</button>
+    </div>
   </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
 </body>
