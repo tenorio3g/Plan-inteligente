@@ -1,6 +1,5 @@
-// Configuración de Firebase
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
+  apiKey: "AIzaSyDPWYVBgVpkBhJdMvlhPV3JzCJHF-za7Us",
   authDomain: "tareas-inteligentes.firebaseapp.com",
   projectId: "tareas-inteligentes",
   storageBucket: "tareas-inteligentes.appspot.com",
@@ -12,193 +11,98 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let currentUser = null;
-const adminId = "0001";
+let usuarioActual = null;
 
-// LOGIN
 function login() {
   const id = document.getElementById("employeeId").value.trim();
-  if (!id) return alert("Ingresa tu número de empleado");
-  currentUser = id;
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("listaTareas").classList.remove("hidden");
+  if (!id) return alert("Ingrese un ID válido");
+  usuarioActual = id;
+  document.getElementById("loginModal").style.display = "none";
 
-  if (currentUser === adminId) {
+  if (id === "0001") {
     document.getElementById("adminPanel").classList.remove("hidden");
-    cargarGrafico();
   }
-
-  mostrarTareas();
+  document.getElementById("tareasAsignadas").classList.remove("hidden");
+  escucharCambios();
 }
 
-// CERRAR SESIÓN
-function logout() {
-  currentUser = null;
-  document.getElementById("login").classList.remove("hidden");
-  document.getElementById("adminPanel").classList.add("hidden");
-  document.getElementById("listaTareas").classList.add("hidden");
-  document.getElementById("listaTareas").innerHTML = "";
-}
-
-// GUARDAR NUEVA ACTIVIDAD
 function guardarActividad() {
-  const titulo = document.getElementById("titulo").value.trim();
-  const comentario = document.getElementById("comentario").value.trim();
-  const asignado = document.getElementById("asignado").value.trim();
-  if (!titulo || !asignado) return alert("Título y asignación son obligatorios");
+  const titulo = document.getElementById("titulo").value;
+  const comentario = document.getElementById("comentario").value;
+  const asignado = document.getElementById("asignado").value;
+  const fotoInput = document.getElementById("foto");
 
-  db.collection("actividades").add({
+  const nueva = {
     titulo,
     comentario,
     asignado,
     estado: "pendiente",
     comentarios: [],
-    creada: new Date()
-  }).then(() => {
-    document.getElementById("titulo").value = "";
-    document.getElementById("comentario").value = "";
-    document.getElementById("asignado").value = "";
-    mostrarTareas();
-    cargarGrafico();
-  });
+    timestamp: new Date()
+  };
+
+  if (fotoInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      nueva.foto = e.target.result;
+      db.collection("actividades").add(nueva);
+    };
+    reader.readAsDataURL(fotoInput.files[0]);
+  } else {
+    nueva.foto = "";
+    db.collection("actividades").add(nueva);
+  }
 }
 
-// MOSTRAR ACTIVIDADES
-function mostrarTareas() {
-  db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
-    const lista = document.getElementById("listaTareas");
-    lista.innerHTML = "";
-
+function escucharCambios() {
+  db.collection("actividades").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+    const contenedor = document.getElementById("listaTareas");
+    contenedor.innerHTML = "";
     snapshot.forEach(doc => {
-      const data = doc.data();
+      const act = doc.data();
       const id = doc.id;
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <strong>${act.titulo}</strong><br>
+        <em>Asignado a: ${act.asignado}</em><br>
+        Estado: ${act.estado}<br>
+        ${act.comentario}<br>
+        ${act.foto ? `<img src="${act.foto}">` : ""}
+        <div><strong>Comentarios:</strong><br>${
+          act.comentarios.map(c => `<p><em>${c.usuario}:</em> ${c.texto}</p>`).join("")
+        }</div>
+      `;
 
-      if (currentUser !== adminId && currentUser !== data.asignado) return;
+      if (usuarioActual === act.asignado || usuarioActual === "0001") {
+        const btnIniciar = document.createElement("button");
+        btnIniciar.textContent = act.estado === "pendiente" ? "Iniciar" : "Finalizar";
+        btnIniciar.onclick = () => {
+          db.collection("actividades").doc(id).update({
+            estado: act.estado === "pendiente" ? "en progreso" : "finalizado"
+          });
+        };
+        card.appendChild(btnIniciar);
 
-      const div = document.createElement("div");
-      div.className = "tarea";
-      div.innerHTML = 
-        <h3>${data.titulo}</h3>
-        <p><strong>Asignado a:</strong> ${data.asignado}</p>
-        <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
-        <p><strong>Estado:</strong> ${data.estado}</p>
-        ${data.comentarios.map(c => <p>🗨️ ${c.usuario}: ${c.texto}</p>).join("")}
-        ${currentUser === adminId ? 
-          <button onclick="editarActividad('${id}')">Editar</button>
-          <button onclick="eliminarActividad('${id}')">Eliminar</button>
-         : ""}
-        ${currentUser !== adminId && data.asignado === currentUser && data.estado !== "finalizado" ? 
-          <button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>
-          <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
-          <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
-          <button onclick="agregarComentario('${id}')">Comentar</button>
-         : ""}
-      ;
-      lista.appendChild(div);
-    });
-  });
-}
+        const inputComentario = document.createElement("input");
+        inputComentario.placeholder = "Escribe un comentario";
+        card.appendChild(inputComentario);
 
-// CAMBIAR ESTADO DE ACTIVIDAD
-function cambiarEstado(id, nuevoEstado) {
-  db.collection("actividades").doc(id).update({ estado: nuevoEstado });
-}
-
-// AGREGAR COMENTARIO
-function agregarComentario(id) {
-  const comentario = document.getElementById(comentario-${id}).value.trim();
-  if (!comentario) return;
-
-  db.collection("actividades").doc(id).update({
-    comentarios: firebase.firestore.FieldValue.arrayUnion({
-      usuario: currentUser,
-      texto: comentario
-    })
-  }).then(() => {
-    document.getElementById(comentario-${id}).value = "";
-  });
-}
-
-// ELIMINAR ACTIVIDAD
-function eliminarActividad(id) {
-  if (confirm("¿Seguro que deseas eliminar esta actividad?")) {
-    db.collection("actividades").doc(id).delete();
-  }
-}
-
-// EDITAR ACTIVIDAD (básico - reemplaza)
-function editarActividad(id) {
-  const nuevoTitulo = prompt("Nuevo título:");
-  const nuevoComentario = prompt("Nuevo comentario:");
-  const nuevoAsignado = prompt("Nuevo asignado:");
-
-  if (nuevoTitulo && nuevoAsignado) {
-    db.collection("actividades").doc(id).update({
-      titulo: nuevoTitulo,
-      comentario: nuevoComentario,
-      asignado: nuevoAsignado
-    });
-  }
-}
-
-// GRAFICO DE CUMPLIMIENTO
-function cargarGrafico() {
-  db.collection("actividades").get().then(snapshot => {
-    const counts = {};
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if (!counts[data.asignado]) counts[data.asignado] = 0;
-      if (data.estado === "finalizado") counts[data.asignado]++;
-    });
-
-    const ctx = document.getElementById("graficoCumplidas").getContext("2d");
-    new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: Object.keys(counts),
-        datasets: [{
-          label: "Tareas cumplidas",
-          data: Object.values(counts),
-          backgroundColor: "rgba(75,192,192,0.6)"
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: "Tareas finalizadas por usuario" }
-        }
+        const btnComentar = document.createElement("button");
+        btnComentar.textContent = "Agregar comentario";
+        btnComentar.onclick = () => {
+          const nuevo = {
+            usuario: usuarioActual,
+            texto: inputComentario.value,
+            fecha: new Date()
+          };
+          db.collection("actividades").doc(id).update({
+            comentarios: firebase.firestore.FieldValue.arrayUnion(nuevo)
+          });
+        };
+        card.appendChild(btnComentar);
       }
+      contenedor.appendChild(card);
     });
   });
-}
-
-// Exponer logout en global para HTML
-window.login = login;
-window.logout = logout;
-window.guardarActividad = guardarActividad;
-window.eliminarActividad = eliminarActividad;
-window.editarActividad = editarActividad;
-window.cambiarEstado = cambiarEstado;
-window.agregarComentario = agregarComentario; me dices que otro codigo te falta, porque tengo otros pero no se si tambien son necesarios data.js:
-function guardarActividadLocal(actividad) {
-  const actividades = JSON.parse(localStorage.getItem("actividades")) || [];
-  actividades.push(actividad);
-  localStorage.setItem("actividades", JSON.stringify(actividades));
-}
-
-function mostrarActividadesAsignadas(idEmpleado) {
-  const actividades = JSON.parse(localStorage.getItem("actividades")) || [];
-  const contenedor = document.getElementById("actividadesEmpleado");
-
-  const asignadas = actividades.filter(act => act.asignado === idEmpleado);
-  contenedor.innerHTML = asignadas.length
-    ? asignadas.map(a => \
-      <div>
-        <strong>\${a.descripcion}</strong><br>
-        Comentario: \${a.comentario}<br>
-        <img src="\${a.foto}" width="100">
-      </div>
-    \).join('')
-    : '<p>No hay actividades asignadas.</p>';
 }
