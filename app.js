@@ -125,6 +125,9 @@ function mostrarTareas() {
         <p><strong>Asignado a:</strong> ${data.asignado}</p>
         <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
         <p><strong>Estado:</strong> ${data.estado}</p>
+        ${data.fecha ? `<p><strong>Fecha límite:</strong> ${data.fecha}</p>` : ""}
+        ${data.imagenURL ? `<img src="${data.imagenURL}" style="max-width:100%; margin-top:10px;" />` : ""}
+
         ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
         ${currentUser !== adminId && data.asignado === currentUser ? `
           ${data.estado === "pendiente" ? `
