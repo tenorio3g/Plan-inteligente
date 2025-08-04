@@ -39,3 +39,23 @@ button {
   font-weight: bold;
   margin-top: 5px;
 }
+#progresoEmpleado {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+#progresoAdmin h2 {
+  margin-top: 20px;
+  color: #007bff;
+}
+
+#progresoAdmin h3 {
+  margin: 10px 0 5px;
+}
+
+#listaTareas h2 {
+  margin-top: 30px;
+  color: #007bff;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
