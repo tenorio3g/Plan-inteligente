@@ -11,27 +11,24 @@
 <body>
   <div class="container">
     <h1>Gestión de Actividades</h1>
-    <button onclick="logout()">Cerrar sesión</button>
-
-
     <div id="login">
       <input type="text" id="employeeId" placeholder="Número de empleado" />
       <button onclick="login()">Entrar</button>
     </div>
-
     <div id="adminPanel" class="hidden">
       <h2>Crear Actividad</h2>
       <input type="text" id="titulo" placeholder="Título" />
       <textarea id="comentario" placeholder="Comentario"></textarea>
       <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
+      <input type="date" id="fechaActividad" />
       <button onclick="guardarActividad()">Guardar</button>
-      <canvas id="graficoCumplidas" width="400" height="200"></canvas>
     </div>
-
+    <div id="logoutPanel" class="hidden">
+      <button onclick="logout()">Cerrar Sesión</button>
+    </div>
     <div id="listaTareas"></div>
-    <button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
+    <canvas id="graficoCumplidas" width="400" height="200" class="hidden"></canvas>
   </div>
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
 </body>
