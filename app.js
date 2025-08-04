@@ -48,22 +48,47 @@ function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
   const asignado = document.getElementById("asignado").value.trim();
+  const fecha = document.getElementById("fecha").value;
+  const imagen = document.getElementById("imagen").files[0];
+
   if (!titulo || !asignado) return alert("Título y asignación son obligatorios");
 
-  db.collection("actividades").add({
+  const nuevaActividad = {
     titulo,
     comentario,
     asignado,
+    fecha: fecha || null,
     estado: "pendiente",
     comentarios: [],
     creada: new Date()
-  }).then(() => {
-    document.getElementById("titulo").value = "";
-    document.getElementById("comentario").value = "";
-    document.getElementById("asignado").value = "";
-    mostrarTareas();
-    cargarGrafico();
-  });
+  };
+
+  if (imagen) {
+    const storageRef = firebase.storage().ref(`imagenes/${Date.now()}_${imagen.name}`);
+    storageRef.put(imagen).then(snapshot => {
+      snapshot.ref.getDownloadURL().then(url => {
+        nuevaActividad.imagenURL = url;
+        db.collection("actividades").add(nuevaActividad).then(() => {
+          limpiarFormulario();
+        });
+      });
+    });
+  } else {
+    db.collection("actividades").add(nuevaActividad).then(() => {
+      limpiarFormulario();
+    });
+  }
+}
+
+// Limpieza del formulario
+function limpiarFormulario() {
+  document.getElementById("titulo").value = "";
+  document.getElementById("comentario").value = "";
+  document.getElementById("asignado").value = "";
+  document.getElementById("fecha").value = "";
+  document.getElementById("imagen").value = "";
+  mostrarTareas();
+  cargarGrafico();
 }
 
 // MOSTRAR ACTIVIDADES AGRUPADAS
