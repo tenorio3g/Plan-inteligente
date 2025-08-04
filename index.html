@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -20,14 +21,10 @@
       <input type="text" id="titulo" placeholder="Título" />
       <textarea id="comentario" placeholder="Comentario"></textarea>
       <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
-      <input type="date" id="fechaActividad" />
       <button onclick="guardarActividad()">Guardar</button>
-    </div>
-    <div id="logoutPanel" class="hidden">
-      <button onclick="logout()">Cerrar Sesión</button>
+      <div id="graficoCumplidas"></div>
     </div>
     <div id="listaTareas"></div>
-    <canvas id="graficoCumplidas" width="400" height="200" class="hidden"></canvas>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>

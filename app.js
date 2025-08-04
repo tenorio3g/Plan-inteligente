@@ -1,122 +1,103 @@
-// Configuración de Firebase
+
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_BUCKET",
-  messagingSenderId: "TU_MESSAGING_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyDPWYVBgVpkBhJdMvlhPV3JzCJHF-za7Us",
+  authDomain: "tareas-inteligentes.firebaseapp.com",
+  projectId: "tareas-inteligentes",
+  storageBucket: "tareas-inteligentes.firebasestorage.app",
+  messagingSenderId: "1016472192983",
+  appId: "1:1016472192983:web:369bbf0942a95e5ccbad92",
+  measurementId: "G-QM9K6W0C4Q"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let currentUser = null;
-let isAdmin = false;
-let chart = null;
+let usuario = null;
+let tareasRef = db.collection("actividades");
 
 function login() {
-  const id = document.getElementById('employeeId').value.trim();
-  if (!id) return alert('Ingresa un número de empleado');
-  currentUser = id;
-  isAdmin = id === '0001';
-  document.getElementById('login').classList.add('hidden');
-  document.getElementById('logoutPanel').classList.remove('hidden');
-  if (isAdmin) {
-    document.getElementById('adminPanel').classList.remove('hidden');
-    document.getElementById('graficoCumplidas').classList.remove('hidden');
-    cargarGrafico();
-  }
-  cargarTareas();
-}
+  usuario = document.getElementById("employeeId").value.trim();
+  if (!usuario) return alert("ID inválido");
 
-function logout() {
-  currentUser = null;
-  isAdmin = false;
-  document.getElementById('login').classList.remove('hidden');
-  document.getElementById('logoutPanel').classList.add('hidden');
-  document.getElementById('adminPanel').classList.add('hidden');
-  document.getElementById('graficoCumplidas').classList.add('hidden');
-  document.getElementById('listaTareas').innerHTML = '';
+  document.getElementById("login").classList.add("hidden");
+  if (usuario === "0001") {
+    document.getElementById("adminPanel").classList.remove("hidden");
+    graficar();
+  }
+  mostrarTareas();
 }
 
 function guardarActividad() {
-  const titulo = document.getElementById('titulo').value;
-  const comentario = document.getElementById('comentario').value;
-  const asignado = document.getElementById('asignado').value;
-  const fecha = document.getElementById('fechaActividad').value;
-  if (!titulo || !asignado || !fecha) return alert('Faltan campos');
-  db.collection("actividades").add({
-    titulo,
-    comentario,
-    asignado,
-    finalizado: false,
-    fecha
-  }).then(() => {
-    document.getElementById('titulo').value = '';
-    document.getElementById('comentario').value = '';
-    document.getElementById('asignado').value = '';
-    document.getElementById('fechaActividad').value = '';
-    cargarTareas();
-    if (isAdmin) cargarGrafico();
-  });
+  const titulo = document.getElementById("titulo").value;
+  const comentario = document.getElementById("comentario").value;
+  const asignado = document.getElementById("asignado").value;
+  if (!titulo || !comentario || !asignado) return alert("Faltan datos");
+  tareasRef.add({ titulo, comentario, asignado, estado: "pendiente", comentarios: [] });
+  document.getElementById("titulo").value = "";
+  document.getElementById("comentario").value = "";
+  document.getElementById("asignado").value = "";
 }
 
-function cargarTareas() {
-  db.collection("actividades").onSnapshot(snapshot => {
-    const lista = document.getElementById("listaTareas");
-    lista.innerHTML = "";
+function mostrarTareas() {
+  tareasRef.onSnapshot(snapshot => {
+    const cont = document.getElementById("listaTareas");
+    cont.innerHTML = "";
     snapshot.forEach(doc => {
-      const data = doc.data();
-      const fechaHoy = new Date().toISOString().slice(0,10);
-      if (isAdmin || data.asignado === currentUser) {
-        const div = document.createElement("div");
-        div.className = "task";
-        div.innerHTML = \`
-          <b>\${data.titulo}</b> (\${data.fecha})<br/>
-          \${data.comentario}<br/>
-          Asignado a: \${data.asignado}<br/>
-          <input type="checkbox" \${data.finalizado ? 'checked' : ''} onchange="toggleFinalizado('\${doc.id}', this.checked)">
-        \`;
-        lista.appendChild(div);
-      }
+      const tarea = doc.data();
+      const div = document.createElement("div");
+      div.className = "tarea";
+      div.innerHTML = \`
+        <strong>\${tarea.titulo}</strong><br>
+        Asignado a: \${tarea.asignado}<br>
+        <em>\${tarea.comentario}</em><br>
+        Estado: <span class="estado">\${tarea.estado}</span><br>
+        \${usuario === "0001" ? 
+          '<button onclick="editarTarea(\'' + doc.id + '\')">Editar</button><button onclick="eliminarTarea(\'' + doc.id + '\')">Eliminar</button>' :
+          tarea.asignado === usuario && tarea.estado !== "finalizado" ? '<button onclick="cambiarEstado(\'' + doc.id + '\', \'iniciado\')">Iniciar</button><button onclick="cambiarEstado(\'' + doc.id + '\', \'finalizado\')">Finalizar</button>' : ''
+        }
+        \${tarea.comentarios && tarea.comentarios.length > 0 ? '<br><strong>Comentarios:</strong><ul>' + tarea.comentarios.map(c => '<li>' + c + '</li>').join('') + '</ul>' : ''}
+        \${usuario !== "0001" && tarea.asignado === usuario && tarea.estado !== "finalizado" ? '<input placeholder="Comentario" onkeydown="if(event.key==\'Enter\'){ agregarComentario(\'' + doc.id + '\', this.value); this.value=\'\'}">' : ''}
+      \`;
+      cont.appendChild(div);
     });
   });
 }
 
-function toggleFinalizado(id, estado) {
-  db.collection("actividades").doc(id).update({ finalizado: estado });
-  if (isAdmin) cargarGrafico();
+function editarTarea(id) {
+  const nuevoTitulo = prompt("Nuevo título:");
+  if (nuevoTitulo) tareasRef.doc(id).update({ titulo: nuevoTitulo });
 }
 
-function cargarGrafico() {
-  const hoy = new Date().toISOString().slice(0,10);
-  db.collection("actividades").get().then(snapshot => {
-    const datos = {};
+function eliminarTarea(id) {
+  if (confirm("¿Eliminar tarea?")) tareasRef.doc(id).delete();
+}
+
+function cambiarEstado(id, estado) {
+  tareasRef.doc(id).update({ estado });
+}
+
+function agregarComentario(id, comentario) {
+  tareasRef.doc(id).update({
+    comentarios: firebase.firestore.FieldValue.arrayUnion(usuario + ": " + comentario)
+  });
+}
+
+function graficar() {
+  tareasRef.get().then(snapshot => {
+    const data = {};
     snapshot.forEach(doc => {
-      const { asignado, finalizado, fecha } = doc.data();
-      if (fecha === hoy) {
-        if (!datos[asignado]) datos[asignado] = { total: 0, hechas: 0 };
-        datos[asignado].total++;
-        if (finalizado) datos[asignado].hechas++;
+      const tarea = doc.data();
+      if (tarea.estado === "finalizado") {
+        data[tarea.asignado] = (data[tarea.asignado] || 0) + 1;
       }
     });
-    const labels = Object.keys(datos);
-    const valores = labels.map(id => {
-      const { hechas, total } = datos[id];
-      return total ? Math.round((hechas / total) * 100) : 0;
-    });
-    const ctx = document.getElementById("graficoCumplidas").getContext("2d");
-    if (chart) chart.destroy();
-    chart = new Chart(ctx, {
-      type: "doughnut",
+    const ctx = document.createElement("canvas");
+    document.getElementById("graficoCumplidas").appendChild(ctx);
+    new Chart(ctx, {
+      type: "bar",
       data: {
-        labels,
-        datasets: [{
-          label: "% Cumplimiento",
-          data: valores,
-          backgroundColor: labels.map(() => `hsl(\${Math.random()*360},70%,70%)`)
-        }]
+        labels: Object.keys(data),
+        datasets: [{ label: "Tareas cumplidas", data: Object.values(data), backgroundColor: "green" }]
       }
     });
   });
