@@ -1,38 +1,32 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gestión de Actividades</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Actividades Sincronizadas</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <div class="modal" id="loginModal">
-    <div class="modal-content">
-      <h2>Ingrese su número de empleado</h2>
-      <input type="text" id="employeeId" placeholder="Ejemplo: 0001">
+  <div class="container">
+    <h1>Gestión de Actividades</h1>
+    <div id="login">
+      <input type="text" id="employeeId" placeholder="Número de empleado" />
       <button onclick="login()">Entrar</button>
     </div>
-  </div>
-
-  <h1 id="title">Gestión de Actividades</h1>
-
-  <div id="adminPanel" class="hidden">
-    <h2>Formulario de actividad</h2>
-    <input type="text" id="titulo" placeholder="Título de actividad">
-    <textarea id="comentario" placeholder="Comentario"></textarea>
-    <input type="file" id="foto" accept="image/*">
-    <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)">
-    <button onclick="guardarActividad()">Guardar</button>
-  </div>
-
-  <div id="tareasAsignadas" class="hidden">
-    <h2>Tareas asignadas</h2>
+    <div id="adminPanel" class="hidden">
+      <h2>Crear Actividad</h2>
+      <input type="text" id="titulo" placeholder="Título" />
+      <textarea id="comentario" placeholder="Comentario"></textarea>
+      <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
+      <button onclick="guardarActividad()">Guardar</button>
+      <div id="graficoCumplidas"></div>
+    </div>
     <div id="listaTareas"></div>
   </div>
-
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
