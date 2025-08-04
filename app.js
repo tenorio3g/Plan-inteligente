@@ -1,189 +1,162 @@
+// Inicializar Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyDPWYVBgVpkBhJdMvlhPV3JzCJHF-za7Us",
-  authDomain: "tareas-inteligentes.firebaseapp.com",
-  projectId: "tareas-inteligentes",
-  storageBucket: "tareas-inteligentes.firebasestorage.app",
-  messagingSenderId: "1016472192983",
-  appId: "1:1016472192983:web:369bbf0942a95e5ccbad92",
-  measurementId: "G-QM9K6W0C4Q"
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_AUTH_DOMAIN",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_BUCKET",
+  messagingSenderId: "TU_MESSAGING_ID",
+  appId: "TU_APP_ID"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let empleadoId = null;
-let esAdmin = false;
-const tareasRef = db.collection("tareas");
+let empleadoActual = null;
+const fechaHoy = new Date().toISOString().split('T')[0];
 
+// Login
 function login() {
   const input = document.getElementById("employeeId");
-  empleadoId = input.value.trim();
-  if (!empleadoId) return alert("Ingresa tu número de empleado");
-
-  esAdmin = empleadoId === "0001";
-
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("listaTareas").innerHTML = "";
-  if (esAdmin) {
+  const id = input.value.trim();
+  if (id) {
+    empleadoActual = id;
+    document.getElementById("login").classList.add("hidden");
     document.getElementById("adminPanel").classList.remove("hidden");
-    cargarGrafico();
+    cargarActividades();
+    if (empleadoActual === "0001") {
+      mostrarGraficaPorEmpleado();
+    }
   }
-  escucharTareas();
 }
 
-function logout() {
-  location.reload(); // Reinicia la página
+// Cerrar sesión
+function cerrarSesion() {
+  location.reload();
 }
 
+// Guardar actividad
 function guardarActividad() {
   const titulo = document.getElementById("titulo").value;
   const comentario = document.getElementById("comentario").value;
   const asignado = document.getElementById("asignado").value;
   const fecha = document.getElementById("fecha").value;
 
-  if (!titulo || !asignado || !fecha) return alert("Completa todos los campos");
-
-  tareasRef.add({
-    titulo,
-    comentario,
-    asignado,
-    fecha,
-    estado: "pendiente",
-    comentarios: [],
-    creadaPor: empleadoId
-  });
-
-  document.getElementById("titulo").value = "";
-  document.getElementById("comentario").value = "";
-  document.getElementById("asignado").value = "";
-  document.getElementById("fecha").value = "";
-}
-
-function escucharTareas() {
-  tareasRef.orderBy("fecha").onSnapshot(snapshot => {
-    document.getElementById("listaTareas").innerHTML = "";
-
-    const hoy = new Date().toISOString().split("T")[0];
-    const datosGrafico = {};
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const id = doc.id;
-
-      // Mostrar a todos, incluso si no son asignados (modo solo lectura)
-      const puedeVer = esAdmin || data.asignado === empleadoId;
-
-      if (puedeVer) {
-        const div = document.createElement("div");
-        div.className = "tarea";
-        div.innerHTML = `
-          <h3>${data.titulo}</h3>
-          <p><strong>Comentario:</strong> ${data.comentario || "Sin comentarios"}</p>
-          <p><strong>Asignado a:</strong> ${data.asignado}</p>
-          <p><strong>Fecha:</strong> ${data.fecha}</p>
-          <p><strong>Estado:</strong> ${data.estado}</p>
-          ${data.estado === "finalizado" && data.finalizadoPor ? `<p><strong>Finalizado por:</strong> ${data.finalizadoPor}</p>` : ""}
-          ${mostrarBotones(data, id)}
-          <div><strong>Comentarios:</strong> ${data.comentarios?.map(c => `<div>- ${c}</div>`).join("") || "Ninguno"}</div>
-        `;
-        document.getElementById("listaTareas").appendChild(div);
-      }
-
-      // Para el gráfico: contar solo tareas de hoy
-      if (esAdmin && data.fecha === hoy) {
-        if (!datosGrafico[data.asignado]) datosGrafico[data.asignado] = { total: 0, finalizadas: 0 };
-        datosGrafico[data.asignado].total++;
-        if (data.estado === "finalizado") datosGrafico[data.asignado].finalizadas++;
+  if (titulo && comentario && asignado && fecha) {
+    db.collection("actividades").add({
+      titulo,
+      comentario,
+      asignado,
+      fecha,
+      estado: "pendiente",
+      creadaPor: empleadoActual,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+      document.getElementById("titulo").value = "";
+      document.getElementById("comentario").value = "";
+      document.getElementById("asignado").value = "";
+      document.getElementById("fecha").value = "";
+      cargarActividades();
+      if (empleadoActual === "0001") {
+        mostrarGraficaPorEmpleado();
       }
     });
-
-    if (esAdmin) dibujarGrafico(datosGrafico);
-  });
-}
-
-function mostrarBotones(data, id) {
-  let botones = "";
-
-  if (esAdmin) {
-    botones += `<button onclick="eliminarActividad('${id}')">Eliminar</button>`;
-  } else if (data.asignado === empleadoId) {
-    if (data.estado === "pendiente") {
-      botones += `<button onclick="cambiarEstado('${id}', 'en progreso')">Iniciar</button>`;
-    }
-    if (data.estado === "en progreso") {
-      botones += `<button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>`;
-    }
-    if (data.estado === "finalizado") {
-      botones += `<button disabled>Finalizado</button>`;
-    }
-    botones += `
-      <input type="text" id="comentario-${id}" placeholder="Agregar comentario" />
-      <button onclick="agregarComentario('${id}')">Comentar</button>
-    `;
-  }
-
-  return botones;
-}
-
-function cambiarEstado(id, estado) {
-  tareasRef.doc(id).update({
-    estado,
-    finalizadoPor: estado === "finalizado" ? empleadoId : ""
-  });
-}
-
-function agregarComentario(id) {
-  const input = document.getElementById(`comentario-${id}`);
-  const texto = input.value.trim();
-  if (!texto) return;
-
-  tareasRef.doc(id).update({
-    comentarios: firebase.firestore.FieldValue.arrayUnion(`${empleadoId}: ${texto}`)
-  });
-  input.value = "";
-}
-
-function eliminarActividad(id) {
-  if (confirm("¿Eliminar esta actividad?")) {
-    tareasRef.doc(id).delete();
   }
 }
 
-function dibujarGrafico(datos) {
-  const ctx = document.getElementById("grafico").getContext("2d");
-  if (window.miGrafico) window.miGrafico.destroy();
+// Cargar actividades
+function cargarActividades() {
+  const lista = document.getElementById("listaTareas");
+  lista.innerHTML = "";
 
-  const labels = Object.keys(datos);
-  const values = labels.map(emp => {
-    const { finalizadas, total } = datos[emp];
-    return Math.round((finalizadas / total) * 100);
-  });
+  db.collection("actividades")
+    .where("fecha", "==", fechaHoy)
+    .get()
+    .then((querySnapshot) => {
+      const actividades = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (empleadoActual === "0001" || data.asignado === empleadoActual) {
+          actividades.push({ id: doc.id, ...data });
+        }
+      });
 
-  window.miGrafico = new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels: labels.map(e => `Empleado ${e}`),
-      datasets: [{
-        label: "% Cumplimiento hoy",
-        data: values,
-        backgroundColor: ["#4caf50", "#ff9800", "#2196f3", "#f44336"]
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: "bottom" },
-        title: { display: true, text: "Cumplimiento diario por empleado" }
-      }
+      actividades.forEach((act) => {
+        const div = document.createElement("div");
+        div.classList.add("actividad");
+        div.innerHTML = `
+          <h3>${act.titulo}</h3>
+          <p>${act.comentario}</p>
+          <p>Asignado a: ${act.asignado}</p>
+          <p>Estado: ${act.estado}</p>
+          ${act.estado === "pendiente" && act.asignado === empleadoActual ? `<button onclick="finalizarActividad('${act.id}')">Finalizar</button>` : ""}
+        `;
+        lista.appendChild(div);
+      });
+    });
+}
+
+// Finalizar actividad
+function finalizarActividad(id) {
+  db.collection("actividades").doc(id).update({
+    estado: "finalizado"
+  }).then(() => {
+    cargarActividades();
+    if (empleadoActual === "0001") {
+      mostrarGraficaPorEmpleado();
     }
   });
 }
 
-// Exponer funciones
-window.login = login;
-window.logout = logout;
-window.guardarActividad = guardarActividad;
-window.eliminarActividad = eliminarActividad;
-window.editarActividad = editarActividad;
-window.cambiarEstado = cambiarEstado;
-window.agregarComentario = agregarComentario;
+// Mostrar gráfica circular por empleado
+function mostrarGraficaPorEmpleado() {
+  db.collection("actividades")
+    .where("fecha", "==", fechaHoy)
+    .get()
+    .then((querySnapshot) => {
+      const contador = {};
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const emp = data.asignado;
+        if (!contador[emp]) {
+          contador[emp] = { total: 0, finalizadas: 0 };
+        }
+        contador[emp].total++;
+        if (data.estado === "finalizado") {
+          contador[emp].finalizadas++;
+        }
+      });
+
+      const labels = Object.keys(contador);
+      const porcentajes = labels.map((emp) => {
+        const { total, finalizadas } = contador[emp];
+        return total ? Math.round((finalizadas / total) * 100) : 0;
+      });
+
+      const ctx = document.getElementById("graficoCumplidas").getContext("2d");
+      if (window.graficoCumplidas) window.graficoCumplidas.destroy(); // limpiar si ya existe
+
+      window.graficoCumplidas = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: labels.map(e => `Empleado ${e}`),
+          datasets: [{
+            label: "% Completado",
+            data: porcentajes,
+            backgroundColor: ["#4caf50", "#2196f3", "#ff9800", "#e91e63"],
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+            },
+            title: {
+              display: true,
+              text: 'Actividades Completadas por Empleado (Hoy)'
+            }
+          }
+        }
+      });
+    });
+}
