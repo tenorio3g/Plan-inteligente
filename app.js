@@ -91,6 +91,17 @@ function limpiarFormulario() {
   cargarGrafico();
 }
 
+// Limpieza del formulario
+function limpiarFormulario() {
+  document.getElementById("titulo").value = "";
+  document.getElementById("comentario").value = "";
+  document.getElementById("asignado").value = "";
+  document.getElementById("fecha").value = "";
+  document.getElementById("imagen").value = "";
+  mostrarTareas();
+  cargarGrafico();
+}
+
 // MOSTRAR ACTIVIDADES AGRUPADAS
 function mostrarTareas() {
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
