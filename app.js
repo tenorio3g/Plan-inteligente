@@ -26,12 +26,11 @@ function login() {
   if (currentUser === adminId) {
     document.getElementById("adminPanel").classList.remove("hidden");
     cargarGrafico();
-    mostrarProgresoAdmin(); // NUEVO
+    mostrarProgresoAdmin();
   }
 
   mostrarTareas();
 }
-
 
 // CERRAR SESIÓN
 function logout() {
@@ -40,6 +39,8 @@ function logout() {
   document.getElementById("adminPanel").classList.add("hidden");
   document.getElementById("listaTareas").classList.add("hidden");
   document.getElementById("listaTareas").innerHTML = "";
+  document.getElementById("progresoEmpleado").classList.add("hidden");
+  document.getElementById("progresoAdmin").innerHTML = "";
 }
 
 // GUARDAR NUEVA ACTIVIDAD
@@ -65,7 +66,7 @@ function guardarActividad() {
   });
 }
 
-// MOSTRAR ACTIVIDADES
+// MOSTRAR ACTIVIDADES AGRUPADAS
 function mostrarTareas() {
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
     const lista = document.getElementById("listaTareas");
@@ -123,9 +124,9 @@ function mostrarTareas() {
     }
   });
 }
-function mostrarProgreso(tareas) {
-  if (currentUser === adminId) return;
 
+// MOSTRAR PROGRESO EMPLEADO
+function mostrarProgreso(tareas) {
   const contenedor = document.getElementById("progresoEmpleado");
   const total = tareas.length;
   const finalizadas = tareas.filter(t => t.estado === "finalizado").length;
@@ -148,6 +149,8 @@ function mostrarProgreso(tareas) {
     </div>
   `;
 }
+
+// MOSTRAR PROGRESO ADMIN
 function mostrarProgresoAdmin() {
   db.collection("actividades").onSnapshot(snapshot => {
     const progresos = {};
@@ -214,7 +217,7 @@ function eliminarActividad(id) {
   }
 }
 
-// EDITAR ACTIVIDAD (básico - reemplaza)
+// EDITAR ACTIVIDAD
 function editarActividad(id) {
   const nuevoTitulo = prompt("Nuevo título:");
   const nuevoComentario = prompt("Nuevo comentario:");
@@ -261,7 +264,7 @@ function cargarGrafico() {
   });
 }
 
-// Exponer logout en global para HTML
+// Exponer funciones globales
 window.login = login;
 window.logout = logout;
 window.guardarActividad = guardarActividad;
