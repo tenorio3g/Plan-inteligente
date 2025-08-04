@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,18 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Actividades Sincronizadas</title>
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
 </head>
 <body>
   <div class="container">
     <h1>Gestión de Actividades</h1>
 
+    <!-- LOGIN -->
     <div id="login">
       <input type="text" id="employeeId" placeholder="Número de empleado" />
       <button onclick="login()">Entrar</button>
     </div>
 
+    <!-- ADMIN PANEL -->
     <div id="adminPanel" class="hidden">
       <h2>Crear Actividad</h2>
       <input type="text" id="titulo" placeholder="Título" />
@@ -29,16 +33,27 @@
 
       <label>Imagen adjunta (opcional):</label>
       <input type="file" id="imagen" accept="image/*" />
+
+      <button onclick="guardarActividad()">Guardar</button>
+
+      <canvas id="graficoCumplidas" width="400" height="200"></canvas>
       <div id="progresoAdmin"></div>
     </div>
 
+    <!-- PROGRESO EMPLEADO -->
     <div id="progresoEmpleado" class="hidden"></div>
+
+    <!-- LISTA DE TAREAS -->
     <div id="listaTareas"></div>
 
+    <!-- CERRAR SESIÓN -->
     <button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
   </div>
 
+  <!-- Chart.js para gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- App JS -->
   <script src="app.js"></script>
 </body>
 </html>
