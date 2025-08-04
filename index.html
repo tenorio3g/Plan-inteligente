@@ -1,12 +1,14 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Actividades Sincronizadas</title>
+  <title>Gestión de Actividades</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="container">
@@ -18,23 +20,26 @@
       <button onclick="login()">Entrar</button>
     </div>
 
-    <!-- Panel administrador -->
+    <!-- Panel del Administrador / Usuario -->
     <div id="adminPanel" class="hidden">
+      <button onclick="cerrarSesion()" style="float: right;">Cerrar sesión</button>
       <h2>Crear Actividad</h2>
       <input type="text" id="titulo" placeholder="Título" />
       <textarea id="comentario" placeholder="Comentario"></textarea>
       <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
       <input type="date" id="fecha" />
       <button onclick="guardarActividad()">Guardar</button>
-      <canvas id="grafico" width="400" height="300"></canvas>
-      <button onclick="logout()" style="margin-top: 10px;">Cerrar sesión</button>
+
+      <!-- Gráfica solo visible para admin -->
+      <div style="margin-top: 30px;">
+        <canvas id="graficoCumplidas" width="400" height="300"></canvas>
+      </div>
     </div>
 
     <!-- Lista de tareas para todos -->
-    <div id="listaTareas"></div>
+    <div id="listaTareas" style="margin-top: 40px;"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

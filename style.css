@@ -1,102 +1,27 @@
+
 body {
   font-family: Arial, sans-serif;
-  background: #f3f4f6;
+  background: #f1f1f1;
   margin: 0;
   padding: 20px;
-  color: #333;
 }
 
 .container {
-  max-width: 700px;
+  max-width: 600px;
   margin: auto;
-  background: #fff;
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-h1, h2 {
-  text-align: center;
-  color: #2c3e50;
-}
-
-input[type="text"],
-input[type="date"],
-textarea {
-  width: 100%;
-  padding: 10px;
-  margin: 8px 0;
-  border: 1px solid #ccc;
+  background: white;
+  padding: 20px;
   border-radius: 8px;
-  box-sizing: border-box;
-}
-
-textarea {
-  resize: vertical;
-  min-height: 60px;
-}
-
-button {
-  background-color: #3498db;
-  color: white;
-  padding: 10px 16px;
-  margin-top: 8px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 15px;
-  transition: background-color 0.3s ease;
-}
-
-button:hover {
-  background-color: #2980b9;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .hidden {
   display: none;
 }
 
-.tarea {
-  background: #e8f0fe;
-  padding: 15px;
-  margin-top: 10px;
-  border-left: 5px solid #3498db;
-  border-radius: 8px;
-}
-
-.tarea.finalizada {
-  background: #d4edda;
-  border-left-color: #28a745;
-}
-
-.tarea.en-progreso {
-  background: #fff3cd;
-  border-left-color: #ffc107;
-}
-
-.tarea h3 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-.tarea p {
-  margin: 5px 0;
-  font-size: 14px;
-}
-
-.tarea .acciones {
-  margin-top: 10px;
-}
-
-.tarea .acciones button {
-  margin-right: 8px;
-  background-color: #6c757d;
-}
-
-.tarea .acciones button:first-child {
-  background-color: #28a745;
-}
-
-.tarea .acciones button:last-child {
-  background-color: #dc3545;
+input, textarea, button {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 10px;
 }
