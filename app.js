@@ -71,6 +71,12 @@ function guardarActividad() {
 }
 
 function mostrarTareas() {
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde) : null;
+  const hastaFecha = hasta ? new Date(hasta) : null;
+  if (hastaFecha) hastaFecha.setHours(23,59,59,999);
+
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
     const lista = document.getElementById("listaTareas");
     lista.innerHTML = "";
@@ -79,6 +85,11 @@ function mostrarTareas() {
     snapshot.forEach(doc => {
       const data = doc.data();
       const id = doc.id;
+
+      const fechaActividad = data.fecha ? new Date(data.fecha) : null;
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
       const hoy = new Date();
       hoy.setHours(0,0,0,0);
       const fechaLimite = data.fecha ? new Date(data.fecha) : null;
