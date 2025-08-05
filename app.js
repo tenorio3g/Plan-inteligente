@@ -1,4 +1,4 @@
-// Configuración de Firebase
+// Configuración Firebase
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
   authDomain: "tareas-inteligentes.firebaseapp.com",
@@ -8,107 +8,127 @@ const firebaseConfig = {
   appId: "1:1016472192983:web:369bbf0942a95e5ccbad92",
   measurementId: "G-QM9K6W0C4Q"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-
-let currentUser = null;
 const adminId = "0001";
+let currentUser = null;
 
-// LOGIN
 function login() {
   const id = document.getElementById("employeeId").value.trim();
   if (!id) return alert("Ingresa tu número de empleado");
   currentUser = id;
   document.getElementById("login").classList.add("hidden");
   document.getElementById("listaTareas").classList.remove("hidden");
-
   if (currentUser === adminId) {
     document.getElementById("adminPanel").classList.remove("hidden");
     cargarGrafico();
+    mostrarProgresoAdmin();
   }
-
   mostrarTareas();
 }
 
-// CERRAR SESIÓN
 function logout() {
   currentUser = null;
   document.getElementById("login").classList.remove("hidden");
   document.getElementById("adminPanel").classList.add("hidden");
   document.getElementById("listaTareas").classList.add("hidden");
   document.getElementById("listaTareas").innerHTML = "";
+  document.getElementById("progresoEmpleado").classList.add("hidden");
+  document.getElementById("progresoAdmin").innerHTML = "";
 }
 
-// GUARDAR NUEVA ACTIVIDAD
 function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
-  const asignado = document.getElementById("asignado").value.trim();
-  if (!titulo || !asignado) return alert("Título y asignación son obligatorios");
+  const asignadoRaw = document.getElementById("asignado").value.trim();
+  const fecha = document.getElementById("fecha").value;
+  const activo = document.getElementById("activo").value === "true";
 
-  db.collection("actividades").add({
+  if (!titulo || !asignadoRaw) return alert("Campos obligatorios");
+
+  const asignados = asignadoRaw.split(",").map(s => s.trim()).filter(Boolean);
+
+  const nuevaActividad = {
     titulo,
     comentario,
-    asignado,
+    asignados,
+    fecha: fecha || null,
     estado: "pendiente",
+    activo,
     comentarios: [],
     creada: new Date()
-  }).then(() => {
+  };
+
+  db.collection("actividades").add(nuevaActividad).then(() => {
     document.getElementById("titulo").value = "";
     document.getElementById("comentario").value = "";
     document.getElementById("asignado").value = "";
+    document.getElementById("fecha").value = "";
+    document.getElementById("activo").value = "false";
     mostrarTareas();
     cargarGrafico();
   });
 }
 
-// MOSTRAR ACTIVIDADES
 function mostrarTareas() {
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
     const lista = document.getElementById("listaTareas");
     lista.innerHTML = "";
+    const tareasEmpleado = [];
 
     snapshot.forEach(doc => {
       const data = doc.data();
       const id = doc.id;
+      const hoy = new Date();
+      hoy.setHours(0,0,0,0);
+      const fechaLimite = data.fecha ? new Date(data.fecha) : null;
 
-      if (currentUser !== adminId && currentUser !== data.asignado) return;
+      const esAsignado = data.asignados?.includes(currentUser);
+
+      const visibleParaEmpleado = currentUser !== adminId && esAsignado &&
+        data.activo &&
+        (!fechaLimite || fechaLimite <= hoy);
+
+      if (!(currentUser === adminId || visibleParaEmpleado)) return;
+
+      if (esAsignado) tareasEmpleado.push(data);
 
       const div = document.createElement("div");
+      const vencida = fechaLimite && fechaLimite < hoy;
       div.className = "tarea";
       div.innerHTML = `
         <h3>${data.titulo}</h3>
-        <p><strong>Asignado a:</strong> ${data.asignado}</p>
+        <p><strong>Asignados:</strong> ${data.asignados.join(", ")}</p>
         <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
         <p><strong>Estado:</strong> ${data.estado}</p>
+        ${data.fecha ? `<p><strong>Fecha límite:</strong> ${data.fecha} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p>` : ""}
         ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
-        ${currentUser === adminId ? `
-          <button onclick="editarActividad('${id}')">Editar</button>
-          <button onclick="eliminarActividad('${id}')">Eliminar</button>
-        ` : ""}
-        ${currentUser !== adminId && data.asignado === currentUser && data.estado !== "finalizado" ? `
-          <button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>
-          <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
+        ${(esAsignado || currentUser === adminId) ? `
+          ${data.estado === "pendiente" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>` : ""}
+          ${data.estado !== "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>` : ""}
+          ${data.estado === "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button>` : ""}
           <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
           <button onclick="agregarComentario('${id}')">Comentar</button>
+        ` : ""}
+        ${currentUser === adminId ? `
+          <button onclick="toggleActivo('${id}', ${!data.activo})">${data.activo ? "Desactivar" : "Activar"}</button>
+          <button onclick="eliminarActividad('${id}')">Eliminar</button>
         ` : ""}
       `;
       lista.appendChild(div);
     });
+
+    if (currentUser !== adminId) mostrarProgreso(tareasEmpleado);
   });
 }
 
-// CAMBIAR ESTADO DE ACTIVIDAD
 function cambiarEstado(id, nuevoEstado) {
   db.collection("actividades").doc(id).update({ estado: nuevoEstado });
 }
 
-// AGREGAR COMENTARIO
 function agregarComentario(id) {
   const comentario = document.getElementById(`comentario-${id}`).value.trim();
   if (!comentario) return;
-
   db.collection("actividades").doc(id).update({
     comentarios: firebase.firestore.FieldValue.arrayUnion({
       usuario: currentUser,
@@ -119,38 +139,71 @@ function agregarComentario(id) {
   });
 }
 
-// ELIMINAR ACTIVIDAD
+function toggleActivo(id, estado) {
+  db.collection("actividades").doc(id).update({ activo: estado });
+}
+
 function eliminarActividad(id) {
-  if (confirm("¿Seguro que deseas eliminar esta actividad?")) {
+  if (confirm("¿Eliminar esta actividad?")) {
     db.collection("actividades").doc(id).delete();
   }
 }
 
-// EDITAR ACTIVIDAD (básico - reemplaza)
-function editarActividad(id) {
-  const nuevoTitulo = prompt("Nuevo título:");
-  const nuevoComentario = prompt("Nuevo comentario:");
-  const nuevoAsignado = prompt("Nuevo asignado:");
-
-  if (nuevoTitulo && nuevoAsignado) {
-    db.collection("actividades").doc(id).update({
-      titulo: nuevoTitulo,
-      comentario: nuevoComentario,
-      asignado: nuevoAsignado
-    });
-  }
+function mostrarProgreso(tareas) {
+  const cont = document.getElementById("progresoEmpleado");
+  const total = tareas.length;
+  const fin = tareas.filter(t => t.estado === "finalizado").length;
+  const pct = total > 0 ? Math.round((fin / total) * 100) : 0;
+  let color = pct < 50 ? "#dc3545" : pct < 80 ? "#ffc107" : "#28a745";
+  cont.classList.remove("hidden");
+  cont.innerHTML = `
+    <h2>Progreso: ${fin} de ${total} tareas finalizadas (${pct}%)</h2>
+    <div style="background:#ddd; height:20px; border-radius:10px;">
+      <div style="background:${color}; height:100%; width:${pct}%; border-radius:10px;"></div>
+    </div>
+  `;
 }
 
-// GRAFICO DE CUMPLIMIENTO
+function mostrarProgresoAdmin() {
+  db.collection("actividades").onSnapshot(snapshot => {
+    const progreso = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      data.asignados?.forEach(emp => {
+        if (!progreso[emp]) progreso[emp] = { total: 0, finalizadas: 0 };
+        progreso[emp].total++;
+        if (data.estado === "finalizado") progreso[emp].finalizadas++;
+      });
+    });
+    const cont = document.getElementById("progresoAdmin");
+    cont.innerHTML = "<h2>Progreso de Empleados</h2>";
+    for (const emp in progreso) {
+      const total = progreso[emp].total;
+      const fin = progreso[emp].finalizadas;
+      const pct = total > 0 ? Math.round((fin / total) * 100) : 0;
+      let color = pct < 50 ? "#dc3545" : pct < 80 ? "#ffc107" : "#28a745";
+      cont.innerHTML += `
+        <h3>Empleado: ${emp} - ${fin} de ${total} (${pct}%)</h3>
+        <div style="background:#ddd; height:20px; border-radius:10px; margin-bottom:10px;">
+          <div style="background:${color}; height:100%; width:${pct}%; border-radius:10px;"></div>
+        </div>
+      `;
+    }
+  });
+}
+
 function cargarGrafico() {
   db.collection("actividades").get().then(snapshot => {
     const counts = {};
     snapshot.forEach(doc => {
       const data = doc.data();
-      if (!counts[data.asignado]) counts[data.asignado] = 0;
-      if (data.estado === "finalizado") counts[data.asignado]++;
+      if (data.estado === "finalizado") {
+        data.asignados?.forEach(emp => {
+          if (!counts[emp]) counts[emp] = 0;
+          counts[emp]++;
+        });
+      }
     });
-
     const ctx = document.getElementById("graficoCumplidas").getContext("2d");
     new Chart(ctx, {
       type: "bar",
@@ -173,11 +226,10 @@ function cargarGrafico() {
   });
 }
 
-// Exponer logout en global para HTML
 window.login = login;
 window.logout = logout;
 window.guardarActividad = guardarActividad;
-window.eliminarActividad = eliminarActividad;
-window.editarActividad = editarActividad;
 window.cambiarEstado = cambiarEstado;
 window.agregarComentario = agregarComentario;
+window.eliminarActividad = eliminarActividad;
+window.toggleActivo = toggleActivo;
