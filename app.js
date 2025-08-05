@@ -67,6 +67,7 @@ function guardarActividad() {
     document.getElementById("activo").value = "false";
     mostrarTareas();
     cargarGrafico();
+    mostrarProgresoAdmin();
   });
 }
 
@@ -95,7 +96,6 @@ function mostrarTareas() {
       const fechaLimite = data.fecha ? new Date(data.fecha) : null;
 
       const esAsignado = data.asignados?.includes(currentUser);
-
       const visibleParaEmpleado = currentUser !== adminId && esAsignado &&
         data.activo &&
         (!fechaLimite || fechaLimite <= hoy);
@@ -176,16 +176,27 @@ function mostrarProgreso(tareas) {
 }
 
 function mostrarProgresoAdmin() {
-  db.collection("actividades").onSnapshot(snapshot => {
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde) : null;
+  const hastaFecha = hasta ? new Date(hasta) : null;
+  if (hastaFecha) hastaFecha.setHours(23, 59, 59, 999);
+
+  db.collection("actividades").get().then(snapshot => {
     const progreso = {};
     snapshot.forEach(doc => {
       const data = doc.data();
+      const fechaActividad = data.fecha ? new Date(data.fecha) : null;
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
       data.asignados?.forEach(emp => {
         if (!progreso[emp]) progreso[emp] = { total: 0, finalizadas: 0 };
         progreso[emp].total++;
         if (data.estado === "finalizado") progreso[emp].finalizadas++;
       });
     });
+
     const cont = document.getElementById("progresoAdmin");
     cont.innerHTML = "<h2>Progreso de Empleados</h2>";
     for (const emp in progreso) {
@@ -193,6 +204,7 @@ function mostrarProgresoAdmin() {
       const fin = progreso[emp].finalizadas;
       const pct = total > 0 ? Math.round((fin / total) * 100) : 0;
       let color = pct < 50 ? "#dc3545" : pct < 80 ? "#ffc107" : "#28a745";
+
       cont.innerHTML += `
         <h3>Empleado: ${emp} - ${fin} de ${total} (${pct}%)</h3>
         <div style="background:#ddd; height:20px; border-radius:10px; margin-bottom:10px;">
@@ -212,12 +224,9 @@ function cargarGrafico() {
 
   db.collection("actividades").get().then(snapshot => {
     const counts = {};
-
     snapshot.forEach(doc => {
       const data = doc.data();
       const fechaActividad = data.fecha ? new Date(data.fecha) : null;
-
-      // Aplicar filtro
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
