@@ -2,58 +2,46 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Actividades Sincronizadas</title>
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- Firebase -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestión de Tareas - TENORIO3G</title>
+  <link rel="stylesheet" href="style.css"/>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="container">
-    <h1>Gestión de Actividades</h1>
+    <header>
+      <h1>📋 Gestión de Tareas</h1>
+      <p class="firma">TENORIO3G</p>
+    </header>
 
-    <!-- LOGIN -->
-    <div id="login">
+    <section id="login">
       <input type="text" id="employeeId" placeholder="Número de empleado" />
       <button onclick="login()">Entrar</button>
-    </div>
+    </section>
 
-    <!-- ADMIN PANEL -->
-    <div id="adminPanel" class="hidden">
-      <h2>Crear Actividad</h2>
+    <section id="adminPanel" class="hidden">
+      <h2>Asignar nueva tarea</h2>
       <input type="text" id="titulo" placeholder="Título" />
       <textarea id="comentario" placeholder="Comentario"></textarea>
       <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
-
       <label>Fecha límite:</label>
       <input type="date" id="fecha" />
-
-      <!--<label>Imagen adjunta (opcional):</label>-->
-      <!--<input type="file" id="imagen" accept="image/*" />-->
-
       <button onclick="guardarActividad()">Guardar</button>
-
-      <canvas id="graficoCumplidas" width="400" height="200"></canvas>
+      <canvas id="graficoCumplidas"></canvas>
       <div id="progresoAdmin"></div>
-    </div>
+    </section>
 
-    <!-- PROGRESO EMPLEADO -->
-    <div id="progresoEmpleado" class="hidden"></div>
-
-    <!-- LISTA DE TAREAS -->
-    <div id="listaTareas"></div>
-
-    <!-- CERRAR SESIÓN -->
+    <section id="progresoEmpleado" class="hidden"></section>
+    <section id="listaTareas"></section>
     <button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
+
+    <footer>
+      <p>© 2025 TENORIO3G. Todos los derechos reservados.</p>
+    </footer>
   </div>
 
-  <!-- Chart.js para gráficos -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- App JS -->
   <script src="app.js"></script>
 </body>
 </html>
