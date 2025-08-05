@@ -1,4 +1,3 @@
-
 // Configuración de Firebase
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
@@ -12,11 +11,11 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const storage = firebase.storage();
 
 let currentUser = null;
 const adminId = "0001";
 
+// LOGIN
 function login() {
   const id = document.getElementById("employeeId").value.trim();
   if (!id) return alert("Ingresa tu número de empleado");
@@ -33,6 +32,7 @@ function login() {
   mostrarTareas();
 }
 
+// CERRAR SESIÓN
 function logout() {
   currentUser = null;
   document.getElementById("login").classList.remove("hidden");
@@ -43,12 +43,12 @@ function logout() {
   document.getElementById("progresoAdmin").innerHTML = "";
 }
 
+// GUARDAR NUEVA ACTIVIDAD (sin imagen)
 function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
   const asignado = document.getElementById("asignado").value.trim();
   const fecha = document.getElementById("fecha").value;
-  const imagen = document.getElementById("imagen").files[0];
 
   if (!titulo || !asignado) return alert("Título y asignación son obligatorios");
 
@@ -62,33 +62,22 @@ function guardarActividad() {
     creada: new Date()
   };
 
-  if (imagen) {
-    const storageRef = firebase.storage().ref(`imagenes/${Date.now()}_${imagen.name}`);
-    storageRef.put(imagen).then(snapshot => {
-      snapshot.ref.getDownloadURL().then(url => {
-        nuevaActividad.imagenURL = url;
-        db.collection("actividades").add(nuevaActividad).then(() => {
-          limpiarFormulario();
-        });
-      });
-    });
-  } else {
-    db.collection("actividades").add(nuevaActividad).then(() => {
-      limpiarFormulario();
-    });
-  }
+  db.collection("actividades").add(nuevaActividad).then(() => {
+    limpiarFormulario();
+  });
 }
 
+// LIMPIAR FORMULARIO
 function limpiarFormulario() {
   document.getElementById("titulo").value = "";
   document.getElementById("comentario").value = "";
   document.getElementById("asignado").value = "";
   document.getElementById("fecha").value = "";
-  document.getElementById("imagen").value = "";
   mostrarTareas();
   cargarGrafico();
 }
 
+// MOSTRAR ACTIVIDADES
 function mostrarTareas() {
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
     const lista = document.getElementById("listaTareas");
@@ -114,7 +103,6 @@ function mostrarTareas() {
         <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
         <p><strong>Estado:</strong> ${data.estado}</p>
         ${data.fecha ? `<p><strong>Fecha límite:</strong> ${data.fecha} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p>` : ""}
-        ${data.imagenURL ? `<img src="${data.imagenURL}" style="max-width:100%; margin-top:10px;" />` : ""}
         ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
         ${currentUser !== adminId && data.asignado === currentUser ? `
           ${data.estado === "pendiente" ? `
@@ -151,6 +139,7 @@ function mostrarTareas() {
   });
 }
 
+// MOSTRAR PROGRESO EMPLEADO
 function mostrarProgreso(tareas) {
   const contenedor = document.getElementById("progresoEmpleado");
   const total = tareas.length;
@@ -175,6 +164,7 @@ function mostrarProgreso(tareas) {
   `;
 }
 
+// MOSTRAR PROGRESO ADMIN
 function mostrarProgresoAdmin() {
   db.collection("actividades").onSnapshot(snapshot => {
     const progresos = {};
@@ -214,10 +204,12 @@ function mostrarProgresoAdmin() {
   });
 }
 
+// CAMBIAR ESTADO DE ACTIVIDAD
 function cambiarEstado(id, nuevoEstado) {
   db.collection("actividades").doc(id).update({ estado: nuevoEstado });
 }
 
+// AGREGAR COMENTARIO
 function agregarComentario(id) {
   const comentario = document.getElementById(`comentario-${id}`).value.trim();
   if (!comentario) return;
@@ -232,12 +224,14 @@ function agregarComentario(id) {
   });
 }
 
+// ELIMINAR ACTIVIDAD
 function eliminarActividad(id) {
   if (confirm("¿Seguro que deseas eliminar esta actividad?")) {
     db.collection("actividades").doc(id).delete();
   }
 }
 
+// EDITAR ACTIVIDAD
 function editarActividad(id) {
   const nuevoTitulo = prompt("Nuevo título:");
   const nuevoComentario = prompt("Nuevo comentario:");
@@ -252,6 +246,7 @@ function editarActividad(id) {
   }
 }
 
+// GRAFICO DE CUMPLIMIENTO
 function cargarGrafico() {
   db.collection("actividades").get().then(snapshot => {
     const counts = {};
@@ -283,6 +278,7 @@ function cargarGrafico() {
   });
 }
 
+// EXponer funciones globales
 window.login = login;
 window.logout = logout;
 window.guardarActividad = guardarActividad;
