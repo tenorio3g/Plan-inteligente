@@ -25,9 +25,14 @@
       <h2>Asignar nueva tarea</h2>
       <input type="text" id="titulo" placeholder="Título" />
       <textarea id="comentario" placeholder="Comentario"></textarea>
-      <input type="text" id="asignado" placeholder="Asignar a (ej: 0002)" />
+      <input type="text" id="asignado" placeholder="Asignar a (ej: 0002,0003,0004)" />
       <label>Fecha límite:</label>
       <input type="date" id="fecha" />
+      <label>¿Activar tarea ahora?</label>
+      <select id="activo">
+        <option value="false">No</option>
+        <option value="true">Sí</option>
+      </select>
       <button onclick="guardarActividad()">Guardar</button>
       <canvas id="graficoCumplidas"></canvas>
       <div id="progresoAdmin"></div>
