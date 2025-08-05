@@ -204,10 +204,23 @@ function mostrarProgresoAdmin() {
 }
 
 function cargarGrafico() {
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde) : null;
+  const hastaFecha = hasta ? new Date(hasta) : null;
+  if (hastaFecha) hastaFecha.setHours(23, 59, 59, 999);
+
   db.collection("actividades").get().then(snapshot => {
     const counts = {};
+
     snapshot.forEach(doc => {
       const data = doc.data();
+      const fechaActividad = data.fecha ? new Date(data.fecha) : null;
+
+      // Aplicar filtro
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
       if (data.estado === "finalizado") {
         data.asignados?.forEach(emp => {
           if (!counts[emp]) counts[emp] = 0;
@@ -215,13 +228,14 @@ function cargarGrafico() {
         });
       }
     });
+
     const ctx = document.getElementById("graficoCumplidas").getContext("2d");
     new Chart(ctx, {
       type: "bar",
       data: {
         labels: Object.keys(counts),
         datasets: [{
-          label: "Tareas cumplidas",
+          label: "Tareas finalizadas",
           data: Object.values(counts),
           backgroundColor: "rgba(75,192,192,0.6)"
         }]
@@ -230,7 +244,7 @@ function cargarGrafico() {
         responsive: true,
         plugins: {
           legend: { display: false },
-          title: { display: true, text: "Tareas finalizadas por usuario" }
+          title: { display: true, text: "Tareas finalizadas por usuario (filtradas)" }
         }
       }
     });
