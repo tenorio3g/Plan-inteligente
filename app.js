@@ -104,18 +104,20 @@ function mostrarTareas() {
         <p><strong>Estado:</strong> ${data.estado}</p>
         ${data.fecha ? `<p><strong>Fecha límite:</strong> ${data.fecha} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p>` : ""}
         ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
-        ${currentUser !== adminId && data.asignado === currentUser ? `
-          ${data.estado === "pendiente" ? `
-            <button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>
-            <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
-          ` : data.estado === "iniciado" ? `
-            <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
-          ` : `
-            <button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button>
-          `}
-          <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
-          <button onclick="agregarComentario('${id}')">Comentar</button>
+        ${(currentUser === adminId || data.asignado === currentUser) ? `
+          ${data.estado === "pendiente" && currentUser !== adminId ? `
+          <button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>
+          <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
+        ` : data.estado === "iniciado" && currentUser !== adminId ? `
+          <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
+        ` : currentUser !== adminId ? `
+          <button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button>
         ` : ""}
+
+        <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
+        <button onclick="agregarComentario('${id}')">Comentar</button>
+      ` : ""}
+
         ${currentUser === adminId ? `
           <button onclick="editarActividad('${id}')">Editar</button>
           <button onclick="eliminarActividad('${id}')">Eliminar</button>
