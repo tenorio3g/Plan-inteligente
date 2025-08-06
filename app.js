@@ -16,7 +16,7 @@ let graficoRef = null;
 
 function login() {
   const id = document.getElementById("employeeId").value.trim();
-  if (!id) return alert("Ingresa tu número de empleado");
+  if (!id) return mostrarAlerta("⚠️ Ingresa tu número de empleado");
   currentUser = id;
   document.getElementById("login").classList.add("hidden");
   document.getElementById("listaTareas").classList.remove("hidden");
@@ -35,7 +35,6 @@ function logout() {
   document.getElementById("progresoEmpleado").classList.add("hidden");
   document.getElementById("progresoAdmin").innerHTML = "";
 }
-
 function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
@@ -43,7 +42,10 @@ function guardarActividad() {
   const fecha = document.getElementById("fecha").value;
   const activo = document.getElementById("activo").value === "true";
 
-  if (!titulo || !asignadoRaw) return alert("Campos obligatorios");
+  if (!titulo || !asignadoRaw) {
+    mostrarAlerta("⚠️ Título y asignado son obligatorios");
+    return;
+  }
 
   const asignados = asignadoRaw.split(",").map(s => s.trim()).filter(Boolean);
 
@@ -64,6 +66,7 @@ function guardarActividad() {
     document.getElementById("asignado").value = "";
     document.getElementById("fecha").value = "";
     document.getElementById("activo").value = "false";
+    mostrarAlerta("✅ Actividad guardada correctamente");
     aplicarFiltros();
   });
 }
@@ -71,9 +74,7 @@ function guardarActividad() {
 function aplicarFiltros() {
   mostrarTareas();
   cargarGrafico();
-  if (currentUser === adminId) {
-    mostrarProgresoAdmin();
-  }
+  if (currentUser === adminId) mostrarProgresoAdmin();
 }
 
 function mostrarTareas() {
@@ -111,7 +112,11 @@ function mostrarTareas() {
 
       const div = document.createElement("div");
       const vencida = fechaLimite && fechaLimite < hoy;
-      div.className = "tarea";
+      div.className = `tarea ${data.estado}`;
+      if (vencida && data.estado !== "finalizado") {
+        div.classList.add("vencida");
+      }
+
       div.innerHTML = `
         <h3>${data.titulo}</h3>
         <p><strong>Asignados:</strong> ${data.asignados.join(", ")}</p>
@@ -137,14 +142,15 @@ function mostrarTareas() {
     if (currentUser !== adminId) mostrarProgreso(tareasEmpleado);
   });
 }
-
 function cambiarEstado(id, nuevoEstado) {
-  db.collection("actividades").doc(id).update({ estado: nuevoEstado });
+  db.collection("actividades").doc(id).update({ estado: nuevoEstado }).then(() => {
+    mostrarAlerta(`✅ Estado cambiado a ${nuevoEstado}`);
+  });
 }
 
 function agregarComentario(id) {
   const comentario = document.getElementById(`comentario-${id}`).value.trim();
-  if (!comentario) return;
+  if (!comentario) return mostrarAlerta("⚠️ Ingresa un comentario");
   db.collection("actividades").doc(id).update({
     comentarios: firebase.firestore.FieldValue.arrayUnion({
       usuario: currentUser,
@@ -152,6 +158,7 @@ function agregarComentario(id) {
     })
   }).then(() => {
     document.getElementById(`comentario-${id}`).value = "";
+    mostrarAlerta("🗨️ Comentario agregado");
   });
 }
 
@@ -265,7 +272,15 @@ function cargarGrafico() {
     });
   });
 }
+function mostrarAlerta(mensaje) {
+  const alerta = document.createElement("div");
+  alerta.className = "alerta";
+  alerta.textContent = mensaje;
+  document.getElementById("alerta-container").appendChild(alerta);
+  setTimeout(() => alerta.remove(), 4000);
+}
 
+// Exportar funciones al entorno global (HTML)
 window.login = login;
 window.logout = logout;
 window.guardarActividad = guardarActividad;
