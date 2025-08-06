@@ -60,3 +60,28 @@ footer {
   font-size: 14px;
   color: #666;
 }
+/* Alertas flotantes */
+.alerta {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #004080;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  opacity: 0.95;
+  z-index: 1000;
+  animation: fadeOut 0.5s ease-in-out forwards;
+  animation-delay: 3s;
+}
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Colores por estado */
+.tarea.pendiente { background-color: #e6f0ff; }
+.tarea.iniciado { background-color: #fff8e1; }
+.tarea.finalizado { background-color: #e6ffe6; }
+.tarea.vencida { border-left: 5px solid red; }
+
