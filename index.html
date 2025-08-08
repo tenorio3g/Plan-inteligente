@@ -9,7 +9,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="exportador.js"></script>
-
 </head>
 <body>
   <div class="container">
@@ -51,32 +50,29 @@
 
 <button onclick="guardarActividad()">Guardar</button>
 
+<h2>Filtrar por fecha</h2>
+<label>Desde:</label>
+<input type="date" id="filtroDesde" />
+<label>Hasta:</label>
+<input type="date" id="filtroHasta" />
+<button onclick="aplicarFiltros()">Filtrar tareas</button>
+<button onclick="exportarCSV()">Exportar a CSV</button>
 
+<canvas id="graficoCumplidas"></canvas>
+<div id="progresoAdmin"></div>
+</section>
 
-      <h2>Filtrar por fecha</h2>
-      <label>Desde:</label>
-      <input type="date" id="filtroDesde" />
-      <label>Hasta:</label>
-      <input type="date" id="filtroHasta" />
-      <button onclick="aplicarFiltros()">Filtrar tareas</button>
-      <button onclick="exportarCSV()">Exportar a CSV</button>
+<section id="progresoEmpleado" class="hidden"></section>
+<section id="listaTareas"></section>
+<button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
 
-
-      <canvas id="graficoCumplidas"></canvas>
-      <div id="progresoAdmin"></div>
-    </section>
-
-    <section id="progresoEmpleado" class="hidden"></section>
-    <section id="listaTareas"></section>
-    <button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
-
-    <footer>
-      <p>© 2025 TENORIO3G. Todos los derechos reservados.</p>
-    </footer>
-  </div>
+<footer>
+  <p>© 2025 TENORIO3G. Todos los derechos reservados.</p>
+</footer>
+</div>
 <div id="alerta-container"></div>
 
-  <script src="app.js"></script>
+<script src="app.js"></script>
 <script>
   const empleados = ["Nato", "Juan", "Ana", "Luisa", "Pedro", "Carlos", "Erika", "Sandra"];
   const maxEmpleados = 5;
@@ -117,14 +113,13 @@ function agregarChip(nombre) {
   chipsContainer.appendChild(chip);
 }
 
-
-  function removerChip(nombre) {
-    empleadosSeleccionados = empleadosSeleccionados.filter(emp => emp !== nombre);
-    const chips = document.querySelectorAll(".chip");
-    chips.forEach(chip => {
-      if (chip.textContent.includes(nombre)) chip.remove();
-    });
-  }
+function removerChip(nombre) {
+  empleadosSeleccionados = empleadosSeleccionados.filter(emp => emp !== nombre);
+  const chips = document.querySelectorAll(".chip");
+  chips.forEach(chip => {
+    if (chip.textContent.includes(nombre)) chip.remove();
+  });
+}
 
 function forzarAgregarChip() {
   const nombre = inputEmpleado.value.trim();
@@ -141,12 +136,9 @@ function forzarAgregarChip() {
   }
 }
 
-  
-  function obtenerEmpleadosSeleccionados() {
-    return empleadosSeleccionados;
-  }
+function obtenerEmpleadosSeleccionados() {
+  return empleadosSeleccionados;
+}
 </script>
-
-  
 </body>
 </html>
