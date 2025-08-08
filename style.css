@@ -79,6 +79,116 @@ footer {
   to { opacity: 0; transform: translateY(-10px); }
 }
 
+
+
+/* ---------- ALERTAS ---------- */
+.alerta {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #004080;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+  opacity: 0.95;
+  z-index: 1000;
+  animation: fadeOut 0.5s ease-in-out forwards;
+  animation-delay: 3s;
+}
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* ---------- CHIPS ---------- */
+.chip-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #ccc;
+  padding: 8px;
+  border-radius: 6px;
+  max-width: 400px;
+  background: #f9f9f9;
+}
+
+.chip {
+  background-color: #007bff;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip span {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* Estilo del input para agregar chips */
+#input-empleado {
+  border: none;
+  flex: 1;
+  font-size: 14px;
+  padding: 6px;
+  outline: none;
+  min-width: 100px;
+}
+
+/* ---------- TAREAS POR ESTADO ---------- */
+.tarea {
+  padding: 10px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.1);
+}
+.tarea.pendiente {
+  background-color: #e6f0ff;
+  border-left: 4px solid #0056b3;
+}
+.tarea.iniciado {
+  background-color: #fff8e1;
+  border-left: 4px solid #ffc107;
+}
+.tarea.finalizado {
+  background-color: #e6ffe6;
+  border-left: 4px solid #28a745;
+}
+.tarea.vencida {
+  border-left: 6px solid red;
+  font-weight: bold;
+}
+
+/* ---------- BOTONES ---------- */
+button {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #0056b3;
+}
+
+/* ---------- INPUTS Y TEXTAREAS ---------- */
+input[type="text"], input[type="date"], input[type="time"], textarea, select {
+  width: 100%;
+  padding: 8px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
 /* Colores por estado */
 .tarea.pendiente { background-color: #e6f0ff; }
 .tarea.iniciado { background-color: #fff8e1; }
