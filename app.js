@@ -1,3 +1,10 @@
+const inputEmpleado = document.getElementById("input-empleado");
+const chipsContainer = document.getElementById("chips-container");
+let empleadosSeleccionados = [];
+
+
+
+
 // Configuración Firebase
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
