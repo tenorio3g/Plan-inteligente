@@ -78,5 +78,58 @@
 <div id="alerta-container"></div>
 
   <script src="app.js"></script>
+<script>
+  const empleados = ["Nato", "Juan", "Ana", "Luisa", "Pedro", "Carlos", "Erika", "Sandra"];
+  const maxEmpleados = 5;
+  const chipsContainer = document.getElementById("chips-container");
+  const inputEmpleado = document.getElementById("input-empleado");
+
+  let empleadosSeleccionados = [];
+
+  inputEmpleado.addEventListener("input", function () {
+    const valor = this.value.toLowerCase();
+    const coincidencia = empleados.find(emp => emp.toLowerCase().startsWith(valor));
+    if (coincidencia && valor.length > 0) {
+      this.value = coincidencia;
+    }
+  });
+
+  inputEmpleado.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const nombre = this.value.trim();
+      if (nombre && empleados.includes(nombre) && !empleadosSeleccionados.includes(nombre)) {
+        if (empleadosSeleccionados.length < maxEmpleados) {
+          empleadosSeleccionados.push(nombre);
+          agregarChip(nombre);
+          this.value = "";
+        }
+      } else {
+        mostrarAlerta("⚠️ Nombre inválido o ya seleccionado");
+      }
+    }
+  });
+
+  function agregarChip(nombre) {
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.innerHTML = `${nombre} <span onclick="removerChip('${nombre}')">&times;</span>`;
+    chipsContainer.appendChild(chip);
+  }
+
+  function removerChip(nombre) {
+    empleadosSeleccionados = empleadosSeleccionados.filter(emp => emp !== nombre);
+    const chips = document.querySelectorAll(".chip");
+    chips.forEach(chip => {
+      if (chip.textContent.includes(nombre)) chip.remove();
+    });
+  }
+
+  function obtenerEmpleadosSeleccionados() {
+    return empleadosSeleccionados;
+  }
+</script>
+
+  
 </body>
 </html>
