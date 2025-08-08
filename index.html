@@ -24,18 +24,35 @@
     </section>
 
     <section id="adminPanel" class="hidden">
-      <h2>Asignar nueva tarea</h2>
-      <input type="text" id="titulo" placeholder="Título" />
-      <textarea id="comentario" placeholder="Comentario"></textarea>
-      <input type="text" id="asignado" placeholder="Asignar a (ej: 0002,0003,0004)" />
-      <label>Fecha límite:</label>
-      <input type="date" id="fecha" />
-      <label>¿Activar tarea ahora?</label>
-      <select id="activo">
-        <option value="false">No</option>
-        <option value="true">Sí</option>
-      </select>
-      <button onclick="guardarActividad()">Guardar</button>
+<h2>Crear nueva actividad</h2>
+
+<input type="text" id="titulo" placeholder="Título de la actividad"><br>
+<textarea id="comentario" placeholder="Comentario inicial"></textarea><br>
+
+<h3>Asignar empleados</h3>
+<div class="chip-input-container">
+  <div id="chips-container"></div>
+  <input type="text" id="input-empleado" placeholder="Escribe nombre o selecciona...">
+</div>
+<small>Máximo 5 empleados</small><br><br>
+
+<label for="fecha">Fecha límite:</label><br>
+<input type="date" id="fecha"><br>
+
+<label for="horaInicio">Hora de inicio:</label><br>
+<input type="time" id="horaInicio"><br>
+
+<label for="horaFin">Hora de fin:</label><br>
+<input type="time" id="horaFin"><br>
+
+<label for="activo">¿Activar tarea?</label><br>
+<select id="activo">
+  <option value="true">Sí</option>
+  <option value="false" selected>No</option>
+</select><br><br>
+
+<button onclick="guardarActividad()">Guardar</button>
+
 
       <h2>Filtrar por fecha</h2>
       <label>Desde:</label>
