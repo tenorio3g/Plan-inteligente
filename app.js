@@ -21,6 +21,7 @@ function login() {
   document.getElementById("login").classList.add("hidden");
   document.getElementById("listaTareas").classList.remove("hidden");
   if (currentUser === adminId) {
+    cargarEmpleados();
     document.getElementById("adminPanel").classList.remove("hidden");
   }
   aplicarFiltros();
@@ -279,6 +280,25 @@ function mostrarAlerta(mensaje) {
   document.getElementById("alerta-container").appendChild(alerta);
   setTimeout(() => alerta.remove(), 4000);
 }
+
+function cargarEmpleados() {
+  const empleados = [
+    { id: "0002", nombre: "Nato" },
+    { id: "0003", nombre: "Carlos" },
+    { id: "0004", nombre: "María" },
+    { id: "0005", nombre: "Sofía" },
+    // Agrega aquí más empleados según tu base
+  ];
+  const select = document.getElementById("asignado");
+  empleados.forEach(emp => {
+    const option = document.createElement("option");
+    option.value = emp.id;
+    option.textContent = `${emp.nombre} (${emp.id})`;
+    select.appendChild(option);
+  });
+}
+
+
 
 // Exportar funciones al entorno global (HTML)
 window.login = login;
