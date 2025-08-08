@@ -1,9 +1,3 @@
-const inputEmpleado = document.getElementById("input-empleado");
-const chipsContainer = document.getElementById("chips-container");
-let empleadosSeleccionados = [];
-
-
-
 
 // Configuración Firebase
 const firebaseConfig = {
