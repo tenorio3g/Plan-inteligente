@@ -105,12 +105,14 @@
     }
   });
 
-  function agregarChip(nombre) {
-    const chip = document.createElement("div");
-    chip.className = "chip";
-    chip.innerHTML = `${nombre} <span onclick="removerChip('${nombre}')">&times;</span>`;
-    chipsContainer.appendChild(chip);
-  }
+function agregarChip(nombre) {
+  const chip = document.createElement("div");
+  chip.className = "chip";
+  chip.setAttribute("data-nombre", nombre);
+  chip.innerHTML = `${nombre} <span onclick="removerChip('${nombre}')">&times;</span>`;
+  chipsContainer.appendChild(chip);
+}
+
 
   function removerChip(nombre) {
     empleadosSeleccionados = empleadosSeleccionados.filter(emp => emp !== nombre);
