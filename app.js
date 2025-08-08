@@ -290,6 +290,7 @@ function mostrarAlerta(mensaje) {
   setTimeout(() => alerta.remove(), 4000);
 }
 
+
 // Exportar funciones al entorno global (HTML)
 window.login = login;
 window.logout = logout;
