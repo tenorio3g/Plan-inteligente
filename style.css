@@ -1,3 +1,22 @@
+/* Chips mostrados en línea */
+.chips-horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* Colores únicos por empleado */
+.chip[data-nombre="Nato"]    { background-color: #007bff; }
+.chip[data-nombre="Pedro"]   { background-color: #28a745; }
+.chip[data-nombre="Sandra"]  { background-color: #ff5722; }
+.chip[data-nombre="Juan"]    { background-color: #6f42c1; }
+.chip[data-nombre="Ana"]     { background-color: #20c997; }
+.chip[data-nombre="Luisa"]   { background-color: #fd7e14; }
+.chip[data-nombre="Carlos"]  { background-color: #6610f2; }
+.chip[data-nombre="Erika"]   { background-color: #e83e8c; }
+
+
 
 body {
   font-family: 'Segoe UI', sans-serif;
