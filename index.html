@@ -32,8 +32,12 @@
 <h3>Asignar empleados</h3>
 <div class="chip-input-container">
   <div id="chips-container" class="chips-horizontal"></div>
-  <input type="text" id="input-empleado" placeholder="Escribe nombre o selecciona...">
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <input type="text" id="input-empleado" placeholder="Escribe nombre o selecciona..." style="flex:1;">
+    <button type="button" onclick="forzarAgregarChip()">➕</button>
+  </div>
 </div>
+
 <small>Máximo 5 empleados</small><br><br>
 
 <label for="fecha">Fecha límite:</label><br>
@@ -122,6 +126,22 @@ function agregarChip(nombre) {
     });
   }
 
+function forzarAgregarChip() {
+  const nombre = inputEmpleado.value.trim();
+  if (nombre && empleados.includes(nombre) && !empleadosSeleccionados.includes(nombre)) {
+    if (empleadosSeleccionados.length < maxEmpleados) {
+      empleadosSeleccionados.push(nombre);
+      agregarChip(nombre);
+      inputEmpleado.value = "";
+    } else {
+      mostrarAlerta("⚠️ Límite de empleados alcanzado");
+    }
+  } else {
+    mostrarAlerta("⚠️ Nombre inválido o ya agregado");
+  }
+}
+
+  
   function obtenerEmpleadosSeleccionados() {
     return empleadosSeleccionados;
   }
