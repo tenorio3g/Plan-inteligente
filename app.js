@@ -38,22 +38,25 @@ function logout() {
 function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
-  const asignadoRaw = document.getElementById("asignado").value.trim();
   const fecha = document.getElementById("fecha").value;
+  const horaInicio = document.getElementById("horaInicio").value;
+  const horaFin = document.getElementById("horaFin").value;
   const activo = document.getElementById("activo").value === "true";
 
-  if (!titulo || !asignadoRaw) {
-    mostrarAlerta("⚠️ Título y asignado son obligatorios");
+  const asignados = obtenerEmpleadosSeleccionados();
+
+  if (!titulo || asignados.length === 0) {
+    mostrarAlerta("⚠️ Título y al menos un empleado son obligatorios");
     return;
   }
-
-  const asignados = asignadoRaw.split(",").map(s => s.trim()).filter(Boolean);
 
   const nuevaActividad = {
     titulo,
     comentario,
     asignados,
     fecha: fecha || null,
+    horaInicio: horaInicio || null,
+    horaFin: horaFin || null,
     estado: "pendiente",
     activo,
     comentarios: [],
@@ -63,11 +66,18 @@ function guardarActividad() {
   db.collection("actividades").add(nuevaActividad).then(() => {
     document.getElementById("titulo").value = "";
     document.getElementById("comentario").value = "";
-    document.getElementById("asignado").value = "";
     document.getElementById("fecha").value = "";
+    document.getElementById("horaInicio").value = "";
+    document.getElementById("horaFin").value = "";
     document.getElementById("activo").value = "false";
+    inputEmpleado.value = "";
+    empleadosSeleccionados = [];
+    chipsContainer.innerHTML = "";
+
     mostrarAlerta("✅ Actividad guardada correctamente");
     aplicarFiltros();
+  }).catch(() => {
+    mostrarAlerta("❌ Error al guardar la actividad");
   });
 }
 
