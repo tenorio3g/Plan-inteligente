@@ -39,8 +39,6 @@ function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
   const fecha = document.getElementById("fecha").value;
-  const horaInicio = document.getElementById("horaInicio").value;
-  const horaFin = document.getElementById("horaFin").value;
   const activo = document.getElementById("activo").value === "true";
 
   const asignados = obtenerEmpleadosSeleccionados();
@@ -55,8 +53,6 @@ function guardarActividad() {
     comentario,
     asignados,
     fecha: fecha || null,
-    horaInicio: horaInicio || null,
-    horaFin: horaFin || null,
     estado: "pendiente",
     activo,
     comentarios: [],
