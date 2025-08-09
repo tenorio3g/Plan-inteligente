@@ -5,15 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gestión de Tareas - TENORIO3G</title>
   <link rel="stylesheet" href="style.css"/>
-
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- Exportador CSV -->
   <script src="exportador.js"></script>
 </head>
 <body>
@@ -23,70 +17,128 @@
       <p class="firma">TENORIO3G</p>
     </header>
 
-    <!-- LOGIN -->
     <section id="login">
       <input type="text" id="employeeId" placeholder="Número de empleado" />
       <button onclick="login()">Entrar</button>
     </section>
 
-    <!-- PANEL ADMINISTRADOR -->
     <section id="adminPanel" class="hidden">
-      <h2>Crear nueva actividad</h2>
+<h2>Crear nueva actividad</h2>
 
-      <input type="text" id="titulo" placeholder="Título de la actividad"><br>
-      <textarea id="comentario" placeholder="Comentario inicial"></textarea><br>
+<input type="text" id="titulo" placeholder="Título de la actividad"><br>
+<textarea id="comentario" placeholder="Comentario inicial"></textarea><br>
 
-      <h3>Asignar empleados</h3>
-      <div class="chip-input-container">
-        <div id="chips-container" class="chips-horizontal"></div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-          <input type="text" id="input-empleado" placeholder="Escribe nombre o selecciona..." style="flex:1;">
-          <button type="button" onclick="forzarAgregarChip()">➕</button>
-        </div>
-      </div>
-      <small>Máximo 5 empleados</small><br><br>
-
-      <label for="fecha">Fecha límite:</label><br>
-      <input type="date" id="fecha"><br>
-
-      <label for="activo">¿Activar tarea?</label><br>
-      <select id="activo">
-        <option value="true">Sí</option>
-        <option value="false" selected>No</option>
-      </select><br><br>
-
-      <button onclick="guardarActividad()">Guardar</button>
-
-      <h2>Filtrar por fecha</h2>
-      <label>Desde:</label>
-      <input type="date" id="filtroDesde" />
-      <label>Hasta:</label>
-      <input type="date" id="filtroHasta" />
-      <button onclick="aplicarFiltros()">Filtrar tareas</button>
-      <button onclick="exportarCSV()">Exportar a CSV</button>
-
-      <canvas id="graficoCumplidas"></canvas>
-      <div id="progresoAdmin"></div>
-    </section>
-
-    <!-- PROGRESO EMPLEADO -->
-    <section id="progresoEmpleado" class="hidden"></section>
-
-    <!-- LISTA DE TAREAS -->
-    <section id="listaTareas"></section>
-
-    <!-- BOTÓN LOGOUT -->
-    <button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
-
-    <footer>
-      <p>© 2025 TENORIO3G. Todos los derechos reservados.</p>
-    </footer>
+<h3>Asignar empleados</h3>
+<div class="chip-input-container">
+  <div id="chips-container" class="chips-horizontal"></div>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <input type="text" id="input-empleado" placeholder="Escribe nombre o selecciona..." style="flex:1;">
+    <button type="button" onclick="forzarAgregarChip()">➕</button>
   </div>
+</div>
 
-  <!-- CONTENEDOR DE ALERTAS -->
-  <div id="alerta-container"></div>
+<small>Máximo 5 empleados</small><br><br>
 
-  <!-- Script principal -->
-  <script src="app.js"></script>
+<label for="fecha">Fecha límite:</label><br>
+<input type="date" id="fecha"><br>
+
+<label for="activo">¿Activar tarea?</label><br>
+<select id="activo">
+  <option value="true">Sí</option>
+  <option value="false" selected>No</option>
+</select><br><br>
+
+<button onclick="guardarActividad()">Guardar</button>
+
+<h2>Filtrar por fecha</h2>
+<label>Desde:</label>
+<input type="date" id="filtroDesde" />
+<label>Hasta:</label>
+<input type="date" id="filtroHasta" />
+<button onclick="aplicarFiltros()">Filtrar tareas</button>
+<button onclick="exportarCSV()">Exportar a CSV</button>
+
+<canvas id="graficoCumplidas"></canvas>
+<div id="progresoAdmin"></div>
+</section>
+
+<section id="progresoEmpleado" class="hidden"></section>
+<section id="listaTareas"></section>
+<button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
+
+<footer>
+  <p>© 2025 TENORIO3G. Todos los derechos reservados.</p>
+</footer>
+</div>
+<div id="alerta-container"></div>
+
+<script src="app.js"></script>
+<script>
+  const empleados = ["Nato", "Juan", "Ana", "Luisa", "Pedro", "Carlos", "Erika", "Sandra"];
+  const maxEmpleados = 5;
+  const chipsContainer = document.getElementById("chips-container");
+  const inputEmpleado = document.getElementById("input-empleado");
+
+  let empleadosSeleccionados = [];
+
+  inputEmpleado.addEventListener("input", function () {
+    const valor = this.value.toLowerCase();
+    const coincidencia = empleados.find(emp => emp.toLowerCase().startsWith(valor));
+    if (coincidencia && valor.length > 0) {
+      this.value = coincidencia;
+    }
+  });
+
+  inputEmpleado.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const nombre = this.value.trim();
+      if (nombre && empleados.includes(nombre) && !empleadosSeleccionados.includes(nombre)) {
+        if (empleadosSeleccionados.length < maxEmpleados) {
+          empleadosSeleccionados.push(nombre);
+          agregarChip(nombre);
+          this.value = "";
+        }
+      } else {
+        mostrarAlerta("⚠️ Nombre inválido o ya seleccionado");
+      }
+    }
+  });
+
+function agregarChip(nombre) {
+  const chip = document.createElement("div");
+  chip.className = "chip";
+  chip.setAttribute("data-nombre", nombre);
+  chip.innerHTML = `${nombre} <span onclick="removerChip('${nombre}')">&times;</span>`;
+  chipsContainer.appendChild(chip);
+}
+
+function removerChip(nombre) {
+  empleadosSeleccionados = empleadosSeleccionados.filter(emp => emp !== nombre);
+  const chips = document.querySelectorAll(".chip");
+  chips.forEach(chip => {
+    if (chip.textContent.includes(nombre)) chip.remove();
+  });
+}
+
+function forzarAgregarChip() {
+  const nombre = inputEmpleado.value.trim();
+  if (nombre && empleados.includes(nombre) && !empleadosSeleccionados.includes(nombre)) {
+    if (empleadosSeleccionados.length < maxEmpleados) {
+      empleadosSeleccionados.push(nombre);
+      agregarChip(nombre);
+      inputEmpleado.value = "";
+    } else {
+      mostrarAlerta("⚠️ Límite de empleados alcanzado");
+    }
+  } else {
+    mostrarAlerta("⚠️ Nombre inválido o ya agregado");
+  }
+}
+
+function obtenerEmpleadosSeleccionados() {
+  return empleadosSeleccionados;
+}
+</script>
 </body>
 </html>
