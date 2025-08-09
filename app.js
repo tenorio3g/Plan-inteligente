@@ -1,10 +1,3 @@
-const inputEmpleado = document.getElementById("input-empleado");
-const chipsContainer = document.getElementById("chips-container");
-let empleadosSeleccionados = [];
-
-
-
-
 // Configuración Firebase
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
@@ -46,6 +39,8 @@ function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
   const fecha = document.getElementById("fecha").value;
+  const horaInicio = document.getElementById("horaInicio").value;
+  const horaFin = document.getElementById("horaFin").value;
   const activo = document.getElementById("activo").value === "true";
 
   const asignados = obtenerEmpleadosSeleccionados();
@@ -60,6 +55,8 @@ function guardarActividad() {
     comentario,
     asignados,
     fecha: fecha || null,
+    horaInicio: horaInicio || null,
+    horaFin: horaFin || null,
     estado: "pendiente",
     activo,
     comentarios: [],
@@ -125,30 +122,30 @@ function mostrarTareas() {
 
       const div = document.createElement("div");
       const vencida = fechaLimite && fechaLimite < hoy;
-      div.className = `tarea ${data.estado}`;
+      div.className = tarea ${data.estado};
       if (vencida && data.estado !== "finalizado") {
         div.classList.add("vencida");
       }
 
-      div.innerHTML = `
+      div.innerHTML = 
         <h3>${data.titulo}</h3>
         <p><strong>Asignados:</strong> ${data.asignados.join(", ")}</p>
         <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
         <p><strong>Estado:</strong> ${data.estado}</p>
-        ${data.fecha ? `<p><strong>Fecha límite:</strong> ${data.fecha} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p>` : ""}
-        ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
-        ${(esAsignado || currentUser === adminId) ? `
-          ${data.estado === "pendiente" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>` : ""}
-          ${data.estado !== "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>` : ""}
-          ${data.estado === "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button>` : ""}
+        ${data.fecha ? <p><strong>Fecha límite:</strong> ${data.fecha} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p> : ""}
+        ${data.comentarios.map(c => <p>🗨️ ${c.usuario}: ${c.texto}</p>).join("")}
+        ${(esAsignado || currentUser === adminId) ? 
+          ${data.estado === "pendiente" && esAsignado ? <button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button> : ""}
+          ${data.estado !== "finalizado" && esAsignado ? <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button> : ""}
+          ${data.estado === "finalizado" && esAsignado ? <button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button> : ""}
           <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
           <button onclick="agregarComentario('${id}')">Comentar</button>
-        ` : ""}
-        ${currentUser === adminId ? `
+         : ""}
+        ${currentUser === adminId ? 
           <button onclick="toggleActivo('${id}', ${!data.activo})">${data.activo ? "Desactivar" : "Activar"}</button>
           <button onclick="eliminarActividad('${id}')">Eliminar</button>
-        ` : ""}
-      `;
+         : ""}
+      ;
       lista.appendChild(div);
     });
 
@@ -157,12 +154,12 @@ function mostrarTareas() {
 }
 function cambiarEstado(id, nuevoEstado) {
   db.collection("actividades").doc(id).update({ estado: nuevoEstado }).then(() => {
-    mostrarAlerta(`✅ Estado cambiado a ${nuevoEstado}`);
+    mostrarAlerta(✅ Estado cambiado a ${nuevoEstado});
   });
 }
 
 function agregarComentario(id) {
-  const comentario = document.getElementById(`comentario-${id}`).value.trim();
+  const comentario = document.getElementById(comentario-${id}).value.trim();
   if (!comentario) return mostrarAlerta("⚠️ Ingresa un comentario");
   db.collection("actividades").doc(id).update({
     comentarios: firebase.firestore.FieldValue.arrayUnion({
@@ -170,7 +167,7 @@ function agregarComentario(id) {
       texto: comentario
     })
   }).then(() => {
-    document.getElementById(`comentario-${id}`).value = "";
+    document.getElementById(comentario-${id}).value = "";
     mostrarAlerta("🗨️ Comentario agregado");
   });
 }
@@ -192,12 +189,12 @@ function mostrarProgreso(tareas) {
   const pct = total > 0 ? Math.round((fin / total) * 100) : 0;
   let color = pct < 50 ? "#dc3545" : pct < 80 ? "#ffc107" : "#28a745";
   cont.classList.remove("hidden");
-  cont.innerHTML = `
+  cont.innerHTML = 
     <h2>Progreso: ${fin} de ${total} tareas finalizadas (${pct}%)</h2>
     <div style="background:#ddd; height:20px; border-radius:10px;">
       <div style="background:${color}; height:100%; width:${pct}%; border-radius:10px;"></div>
     </div>
-  `;
+  ;
 }
 
 function mostrarProgresoAdmin() {
@@ -230,12 +227,12 @@ function mostrarProgresoAdmin() {
       const pct = total > 0 ? Math.round((fin / total) * 100) : 0;
       let color = pct < 50 ? "#dc3545" : pct < 80 ? "#ffc107" : "#28a745";
 
-      cont.innerHTML += `
+      cont.innerHTML += 
         <h3>Empleado: ${emp} - ${fin} de ${total} (${pct}%)</h3>
         <div style="background:#ddd; height:20px; border-radius:10px; margin-bottom:10px;">
           <div style="background:${color}; height:100%; width:${pct}%; border-radius:10px;"></div>
         </div>
-      `;
+      ;
     }
   });
 }
@@ -294,7 +291,12 @@ function mostrarAlerta(mensaje) {
 }
 
 
+
+
+
+
 // Exportar funciones al entorno global (HTML)
+
 window.login = login;
 window.logout = logout;
 window.guardarActividad = guardarActividad;
