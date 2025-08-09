@@ -262,74 +262,79 @@ function mostrarTareas() {
   const hastaFecha = hasta ? new Date(hasta) : null;
   if (hastaFecha) hastaFecha.setHours(23,59,59,999);
 
-  // Listener en tiempo real
-  db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
-    const lista = document.getElementById("listaTareas");
-    if (!lista) return;
-    lista.innerHTML = "";
-    const tareasEmpleado = [];
+  const esAdmin = currentUser === adminId;
 
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const id = doc.id;
+  db.collection("actividades")
+    .orderBy("creada", "desc")
+    .onSnapshot(snapshot => {
+      const lista = document.getElementById("listaTareas");
+      lista.innerHTML = "";
+      const tareasEmpleado = [];
 
-      const fechaActividad = data.fecha ? new Date(data.fecha) : null;
-      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
-      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const id = doc.id;
 
-      const hoy = new Date();
-      hoy.setHours(0,0,0,0);
-      const fechaLimite = data.fecha ? new Date(data.fecha) : null;
+        // Si la tarea no tiene fecha, fechaActividad será null
+        const fechaActividad = data.fecha ? new Date(data.fecha) : null;
 
-      const esAsignado = data.asignados?.includes(currentUser);
-      const visibleParaEmpleado = currentUser !== adminId && esAsignado &&
-        data.activo &&
-        (!fechaLimite || fechaLimite <= hoy);
+        // Filtrado por fechas (si se usan)
+        if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+        if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
-      if (!(currentUser === adminId || visibleParaEmpleado)) return;
+        // Definición de visibilidad
+        if (!esAdmin) {
+          const hoy = new Date();
+          hoy.setHours(0,0,0,0);
+          const fechaLimite = data.fecha ? new Date(data.fecha) : null;
 
-      if (esAsignado) tareasEmpleado.push({ ...data, id });
+          const esAsignado = data.asignados?.includes(currentUser);
+          const visibleParaEmpleado =
+            esAsignado &&
+            data.activo &&
+            (!fechaLimite || fechaLimite <= hoy);
 
-      const div = document.createElement("div");
-      const vencida = fechaLimite && fechaLimite < hoy;
-      div.className = `tarea ${data.estado || "pendiente"}`;
-      if (vencida && data.estado !== "finalizado") {
-        div.classList.add("vencida");
+          if (!visibleParaEmpleado) return;
+          if (esAsignado) tareasEmpleado.push(data);
+        }
+
+        // Render visual
+        const div = document.createElement("div");
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+        const fechaLimite = data.fecha ? new Date(data.fecha) : null;
+        const vencida = fechaLimite && fechaLimite < hoy;
+        div.className = `tarea ${data.estado}`;
+        if (vencida && data.estado !== "finalizado") {
+          div.classList.add("vencida");
+        }
+
+        div.innerHTML = `
+          <h3>${data.titulo}</h3>
+          <p><strong>Asignados:</strong> ${data.asignados.join(", ")}</p>
+          <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
+          <p><strong>Estado:</strong> ${data.estado}</p>
+          ${data.fecha ? `<p><strong>Fecha límite:</strong> ${data.fecha} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p>` : ""}
+          ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
+          ${(data.asignados?.includes(currentUser) || esAdmin) ? `
+            ${data.estado === "pendiente" && data.asignados?.includes(currentUser) ? `<button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>` : ""}
+            ${data.estado !== "finalizado" && data.asignados?.includes(currentUser) ? `<button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>` : ""}
+            ${data.estado === "finalizado" && data.asignados?.includes(currentUser) ? `<button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button>` : ""}
+            <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
+            <button onclick="agregarComentario('${id}')">Comentar</button>
+          ` : ""}
+          ${esAdmin ? `
+            <button onclick="toggleActivo('${id}', ${!data.activo})">${data.activo ? "Desactivar" : "Activar"}</button>
+            <button onclick="eliminarActividad('${id}')">Eliminar</button>
+          ` : ""}
+        `;
+        lista.appendChild(div);
+      });
+
+      if (!esAdmin) {
+        mostrarProgreso(tareasEmpleado);
       }
-
-      // Mostrar horas si existen
-      const horaInicioHtml = data.horaInicio ? `<p><strong>Hora inicio:</strong> ${data.horaInicio}</p>` : "";
-      const horaFinHtml = data.horaFin ? `<p><strong>Hora fin:</strong> ${data.horaFin}</p>` : "";
-
-      div.innerHTML = `
-        <h3>${escapeHtml(data.titulo)}</h3>
-        <p><strong>Asignados:</strong> ${escapeHtml((data.asignados || []).join(", "))}</p>
-        <p><strong>Comentario inicial:</strong> ${escapeHtml(data.comentario || "")}</p>
-        <p><strong>Estado:</strong> ${escapeHtml(data.estado)}</p>
-        ${data.fecha ? `<p><strong>Fecha límite:</strong> ${escapeHtml(data.fecha)} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p>` : ""}
-        ${horaInicioHtml}
-        ${horaFinHtml}
-        ${data.comentarios?.map(c => `<p>🗨️ ${escapeHtml(c.usuario)}: ${escapeHtml(c.texto)}</p>`).join("")}
-        ${(esAsignado || currentUser === adminId) ? `
-          ${data.estado === "pendiente" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>` : ""}
-          ${data.estado !== "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>` : ""}
-          ${data.estado === "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button>` : ""}
-          <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
-          <button onclick="agregarComentario('${id}')">Comentar</button>
-        ` : ""}
-        ${currentUser === adminId ? `
-          <button onclick="toggleActivo('${id}', ${!data.activo})">${data.activo ? "Desactivar" : "Activar"}</button>
-          <button onclick="eliminarActividad('${id}')">Eliminar</button>
-        ` : ""}
-      `;
-      lista.appendChild(div);
     });
-
-    if (currentUser !== adminId) mostrarProgreso(tareasEmpleado);
-  }, error => {
-    console.error("Error en onSnapshot mostrarTareas:", error);
-    mostrarAlerta("❌ Error al cargar tareas (ver consola)");
-  });
 }
 
 // --------------------
