@@ -258,11 +258,19 @@ function logout() {
 function mostrarTareas() {
   const desde = document.getElementById('filtroDesde')?.value;
   const hasta = document.getElementById('filtroHasta')?.value;
-  const desdeFecha = desde ? new Date(desde) : null;
-  const hastaFecha = hasta ? new Date(hasta) : null;
-  if (hastaFecha) hastaFecha.setHours(23,59,59,999);
+
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
   const esAdmin = currentUser === adminId;
+
+  // Función segura para convertir fechas
+  const safeDate = (f) => {
+    if (!f) return null;
+    if (f.toDate) return f.toDate(); // Si es Timestamp de Firestore
+    if (typeof f === "string") return new Date(f + "T00:00:00");
+    return new Date(f);
+  };
 
   db.collection("actividades")
     .orderBy("creada", "desc")
@@ -274,21 +282,19 @@ function mostrarTareas() {
       snapshot.forEach(doc => {
         const data = doc.data();
         const id = doc.id;
+        const fechaActividad = safeDate(data.fecha);
 
-        // Si la tarea no tiene fecha, fechaActividad será null
-        const fechaActividad = data.fecha ? new Date(data.fecha) : null;
-
-        // Filtrado por fechas (si se usan)
+        // Filtrado por fechas
         if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
         if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
-        // Definición de visibilidad
+        // Lógica de visibilidad
         if (!esAdmin) {
           const hoy = new Date();
           hoy.setHours(0,0,0,0);
-          const fechaLimite = data.fecha ? new Date(data.fecha) : null;
-
+          const fechaLimite = fechaActividad;
           const esAsignado = data.asignados?.includes(currentUser);
+
           const visibleParaEmpleado =
             esAsignado &&
             data.activo &&
@@ -302,8 +308,9 @@ function mostrarTareas() {
         const div = document.createElement("div");
         const hoy = new Date();
         hoy.setHours(0,0,0,0);
-        const fechaLimite = data.fecha ? new Date(data.fecha) : null;
+        const fechaLimite = fechaActividad;
         const vencida = fechaLimite && fechaLimite < hoy;
+
         div.className = `tarea ${data.estado}`;
         if (vencida && data.estado !== "finalizado") {
           div.classList.add("vencida");
