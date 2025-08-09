@@ -67,8 +67,6 @@ function guardarActividad() {
     document.getElementById("titulo").value = "";
     document.getElementById("comentario").value = "";
     document.getElementById("fecha").value = "";
-    document.getElementById("horaInicio").value = "";
-    document.getElementById("horaFin").value = "";
     document.getElementById("activo").value = "false";
     inputEmpleado.value = "";
     empleadosSeleccionados = [];
@@ -90,8 +88,6 @@ function aplicarFiltros() {
 function mostrarTareas() {
   const desde = document.getElementById('filtroDesde')?.value;
   const hasta = document.getElementById('filtroHasta')?.value;
-  const desdeFecha = desde ? new Date(desde) : null;
-  const hastaFecha = hasta ? new Date(hasta) : null;
   if (hastaFecha) hastaFecha.setHours(23,59,59,999);
 
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
