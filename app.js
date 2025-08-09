@@ -38,25 +38,22 @@ function logout() {
 function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
+  const asignadoRaw = document.getElementById("asignado").value.trim();
   const fecha = document.getElementById("fecha").value;
-  const horaInicio = document.getElementById("horaInicio").value;
-  const horaFin = document.getElementById("horaFin").value;
   const activo = document.getElementById("activo").value === "true";
 
-  const asignados = obtenerEmpleadosSeleccionados();
-
-  if (!titulo || asignados.length === 0) {
-    mostrarAlerta("⚠️ Título y al menos un empleado son obligatorios");
+  if (!titulo || !asignadoRaw) {
+    mostrarAlerta("⚠️ Título y asignado son obligatorios");
     return;
   }
+
+  const asignados = asignadoRaw.split(",").map(s => s.trim()).filter(Boolean);
 
   const nuevaActividad = {
     titulo,
     comentario,
     asignados,
     fecha: fecha || null,
-    horaInicio: horaInicio || null,
-    horaFin: horaFin || null,
     estado: "pendiente",
     activo,
     comentarios: [],
@@ -66,16 +63,11 @@ function guardarActividad() {
   db.collection("actividades").add(nuevaActividad).then(() => {
     document.getElementById("titulo").value = "";
     document.getElementById("comentario").value = "";
+    document.getElementById("asignado").value = "";
     document.getElementById("fecha").value = "";
     document.getElementById("activo").value = "false";
-    inputEmpleado.value = "";
-    empleadosSeleccionados = [];
-    chipsContainer.innerHTML = "";
-
     mostrarAlerta("✅ Actividad guardada correctamente");
     aplicarFiltros();
-  }).catch(() => {
-    mostrarAlerta("❌ Error al guardar la actividad");
   });
 }
 
@@ -88,6 +80,8 @@ function aplicarFiltros() {
 function mostrarTareas() {
   const desde = document.getElementById('filtroDesde')?.value;
   const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde) : null;
+  const hastaFecha = hasta ? new Date(hasta) : null;
   if (hastaFecha) hastaFecha.setHours(23,59,59,999);
 
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
@@ -285,7 +279,6 @@ function mostrarAlerta(mensaje) {
   document.getElementById("alerta-container").appendChild(alerta);
   setTimeout(() => alerta.remove(), 4000);
 }
-
 
 // Exportar funciones al entorno global (HTML)
 window.login = login;
