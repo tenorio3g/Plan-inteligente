@@ -56,16 +56,26 @@ function toTimestampOrNull(d) {
 function login() {
   const id = document.getElementById("employeeId").value.trim();
   if (!id) return mostrarAlerta("⚠️ Ingresa tu número de empleado");
+
   currentUser = id;
+
+  // Ocultar login
   document.getElementById("login").classList.add("hidden");
+
+  // Mostrar logout
   document.getElementById("logout").classList.remove("hidden");
-  document.getElementById("listaTareas").classList.remove("hidden");
+
+  // Si es admin, mostrar panel completo
   if (currentUser === adminId) {
     document.getElementById("adminPanel").classList.remove("hidden");
-  } else {
-    document.getElementById("adminPanel").classList.add("hidden");
+    document.getElementById("listaTareas").classList.remove("hidden");
+    aplicarFiltros(); // Carga tareas, gráfico y progreso
+  } 
+  // Si es empleado, solo sus tareas y progreso personal
+  else {
+    document.getElementById("listaTareas").classList.remove("hidden");
+    aplicarFiltros(); // Solo mostrará las tareas asignadas a él
   }
-  aplicarFiltros();
 }
 
 function logout() {
@@ -122,9 +132,12 @@ function guardarActividad() {
 // ---------------- Filtros / búsqueda ----------------
 function aplicarFiltros() {
   mostrarTareas();
-  cargarGrafico();
-  if (currentUser === adminId) mostrarProgresoAdmin();
+  if (currentUser === adminId) {
+    cargarGrafico();
+    mostrarProgresoAdmin();
+  }
 }
+
 
 function resetFiltros() {
   document.getElementById("filtroDesde").value = "";
