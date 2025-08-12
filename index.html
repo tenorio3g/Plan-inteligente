@@ -23,7 +23,34 @@
       <button onclick="login()">Entrar</button>
     </section>
 
-    <!-- Panel de tareas del empleado -->
+    <!-- Panel de administrador -->
+    <section id="adminPanel" class="hidden">
+      <h2>Asignar nueva tarea</h2>
+      <input type="text" id="titulo" placeholder="Título" />
+      <textarea id="comentario" placeholder="Comentario"></textarea>
+      <input type="text" id="asignado" placeholder="Asignar a (ej: 0002,0003,0004)" />
+      <label>Fecha límite:</label>
+      <input type="date" id="fecha" />
+      <label>¿Activar tarea ahora?</label>
+      <select id="activo">
+        <option value="false">No</option>
+        <option value="true">Sí</option>
+      </select>
+      <button onclick="guardarActividad()">Guardar</button>
+
+      <h2>Filtrar por fecha</h2>
+      <label>Desde:</label>
+      <input type="date" id="filtroDesde" />
+      <label>Hasta:</label>
+      <input type="date" id="filtroHasta" />
+      <button onclick="aplicarFiltros()">Filtrar tareas</button>
+      <button onclick="exportarCSV()">Exportar a CSV</button>
+
+      <canvas id="graficoCumplidas"></canvas>
+      <div id="progresoAdmin"></div>
+    </section>
+
+    <!-- Progreso y tareas de empleado -->
     <section id="progresoEmpleado" class="hidden"></section>
     <section id="listaTareas" class="hidden"></section>
 
