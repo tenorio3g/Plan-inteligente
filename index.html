@@ -1,82 +1,66 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gestión de Tareas - TENORIO3G</title>
-
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- Firebase compat -->
+  <link rel="stylesheet" href="style.css"/>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <!-- jsPDF para exportar PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="exportador.js"></script>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>📋 Gestión de Tareas</h1>
-      <div class="firma">TENORIO3G</div>
+      <p class="firma">TENORIO3G</p>
     </header>
 
-    <section id="login" class="card">
-      <input id="employeeId" placeholder="Número de empleado (ej. 0001 = admin)" />
-      <div class="row">
-        <button onclick="login()">Entrar</button>
-      </div>
+    <!-- Login -->
+    <section id="login">
+      <input type="text" id="employeeId" placeholder="Número de empleado" />
+      <button onclick="login()">Entrar</button>
     </section>
 
-    <!-- ADMIN PANEL -->
-    <section id="adminPanel" class="card hidden">
-      <h2>Crear / Asignar tarea</h2>
-      <input id="titulo" placeholder="Título" />
-      <textarea id="comentario" placeholder="Comentario inicial"></textarea>
-      <input id="asignado" placeholder="Asignar a (comma-separated: 0002,0003)" />
-      <label>Fecha límite</label>
-      <input id="fecha" type="date" />
-      <label>Activar ahora</label>
-      <select id="activo"><option value="false">No</option><option value="true">Sí</option></select>
-      <div class="row">
-        <button onclick="guardarActividad()">Guardar</button>
-      </div>
+    <!-- Panel de administrador -->
+    <section id="adminPanel" class="hidden">
+      <h2>Asignar nueva tarea</h2>
+      <input type="text" id="titulo" placeholder="Título" />
+      <textarea id="comentario" placeholder="Comentario"></textarea>
+      <input type="text" id="asignado" placeholder="Asignar a (ej: 0002,0003,0004)" />
+      <label>Fecha límite:</label>
+      <input type="date" id="fecha" />
+      <label>¿Activar tarea ahora?</label>
+      <select id="activo">
+        <option value="false">No</option>
+        <option value="true">Sí</option>
+      </select>
+      <button onclick="guardarActividad()">Guardar</button>
 
-      <hr />
-
-      <h3>Filtros y búsqueda</h3>
-      <input id="buscarTexto" placeholder="Buscar por título o empleado" />
-      <div class="row">
-        <label>Desde</label><input id="filtroDesde" type="date" />
-        <label>Hasta</label><input id="filtroHasta" type="date" />
-      </div>
-      <div class="row">
-        <button onclick="aplicarFiltros()">Aplicar filtros</button>
-        <button onclick="resetFiltros()">Reset filtros</button>
-        <button onclick="exportarCSV()">Exportar CSV</button>
-        <button onclick="exportarPDF()">Exportar PDF</button>
-      </div>
+      <h2>Filtrar por fecha</h2>
+      <label>Desde:</label>
+      <input type="date" id="filtroDesde" />
+      <label>Hasta:</label>
+      <input type="date" id="filtroHasta" />
+      <button onclick="aplicarFiltros()">Filtrar tareas</button>
+      <button onclick="exportarCSV()">Exportar a CSV</button>
 
       <canvas id="graficoCumplidas"></canvas>
       <div id="progresoAdmin"></div>
     </section>
 
-    <!-- EMPLOYEE PROGRESS -->
-    <section id="progresoEmpleado" class="card hidden"></section>
+    <!-- Progreso y tareas de empleado -->
+    <section id="progresoEmpleado" class="hidden"></section>
+    <section id="listaTareas" class="hidden"></section>
 
-    <!-- TASKS LIST -->
-    <section id="listaTareas" class="card"></section>
+    <!-- Botón logout -->
+    <button id="logout" class="hidden" onclick="logout()">Cerrar Sesión</button>
 
-    <div class="row">
-      <button id="logout" class="hidden" onclick="logout()">Cerrar sesión</button>
-    </div>
-
-    <footer>© 2025 TENORIO3G</footer>
+    <footer>
+      <p>© 2025 TENORIO3G. Todos los derechos reservados.</p>
+    </footer>
   </div>
-
   <div id="alerta-container"></div>
 
   <script src="app.js"></script>
