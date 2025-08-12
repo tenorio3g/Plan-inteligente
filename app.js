@@ -1,4 +1,4 @@
-// Configuración Firebase
+// Configuración Firebase 
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
   authDomain: "tareas-inteligentes.firebaseapp.com",
@@ -20,6 +20,7 @@ function login() {
   currentUser = id;
   document.getElementById("login").classList.add("hidden");
   document.getElementById("listaTareas").classList.remove("hidden");
+  document.getElementById("logout").classList.remove("hidden");
   if (currentUser === adminId) {
     document.getElementById("adminPanel").classList.remove("hidden");
   }
@@ -31,10 +32,12 @@ function logout() {
   document.getElementById("login").classList.remove("hidden");
   document.getElementById("adminPanel").classList.add("hidden");
   document.getElementById("listaTareas").classList.add("hidden");
+  document.getElementById("logout").classList.add("hidden");
   document.getElementById("listaTareas").innerHTML = "";
   document.getElementById("progresoEmpleado").classList.add("hidden");
   document.getElementById("progresoAdmin").innerHTML = "";
 }
+
 function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
@@ -56,6 +59,8 @@ function guardarActividad() {
     fecha: fecha || null,
     estado: "pendiente",
     activo,
+    horaInicio: null,
+    horaFin: null,
     comentarios: [],
     creada: new Date()
   };
@@ -123,10 +128,18 @@ function mostrarTareas() {
         <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
         <p><strong>Estado:</strong> ${data.estado}</p>
         ${data.fecha ? `<p><strong>Fecha límite:</strong> ${data.fecha} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p>` : ""}
+        ${data.horaInicio ? `<p><strong>Hora inicio:</strong> ${new Date(data.horaInicio.toDate ? data.horaInicio.toDate() : data.horaInicio).toLocaleString()}</p>` : ""}
+        ${data.horaFin ? `<p><strong>Hora fin:</strong> ${new Date(data.horaFin.toDate ? data.horaFin.toDate() : data.horaFin).toLocaleString()}</p>` : ""}
         ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
         ${(esAsignado || currentUser === adminId) ? `
-          ${data.estado === "pendiente" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>` : ""}
-          ${data.estado !== "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>` : ""}
+          ${data.estado === "pendiente" && esAsignado ? `
+            <input type="datetime-local" id="horaInicio-${id}" />
+            <button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>
+          ` : ""}
+          ${data.estado !== "finalizado" && esAsignado ? `
+            <input type="datetime-local" id="horaFin-${id}" />
+            <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
+          ` : ""}
           ${data.estado === "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button>` : ""}
           <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
           <button onclick="agregarComentario('${id}')">Comentar</button>
@@ -142,8 +155,24 @@ function mostrarTareas() {
     if (currentUser !== adminId) mostrarProgreso(tareasEmpleado);
   });
 }
+
 function cambiarEstado(id, nuevoEstado) {
-  db.collection("actividades").doc(id).update({ estado: nuevoEstado }).then(() => {
+  let updateData = { estado: nuevoEstado };
+
+  if (nuevoEstado === "iniciado") {
+    let horaInput = document.getElementById(`horaInicio-${id}`)?.value;
+    updateData.horaInicio = horaInput ? new Date(horaInput) : new Date();
+  } 
+  else if (nuevoEstado === "finalizado") {
+    let horaInput = document.getElementById(`horaFin-${id}`)?.value;
+    updateData.horaFin = horaInput ? new Date(horaInput) : new Date();
+  } 
+  else if (nuevoEstado === "pendiente") {
+    updateData.horaInicio = null;
+    updateData.horaFin = null;
+  }
+
+  db.collection("actividades").doc(id).update(updateData).then(() => {
     mostrarAlerta(`✅ Estado cambiado a ${nuevoEstado}`);
   });
 }
@@ -272,6 +301,7 @@ function cargarGrafico() {
     });
   });
 }
+
 function mostrarAlerta(mensaje) {
   const alerta = document.createElement("div");
   alerta.className = "alerta";
