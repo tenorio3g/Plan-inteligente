@@ -59,22 +59,55 @@ function login() {
 
   currentUser = id;
 
-  // Ocultar login
+  // Ocultar login y mostrar logout
   document.getElementById("login").classList.add("hidden");
-
-  // Mostrar logout
   document.getElementById("logout").classList.remove("hidden");
 
-  // Si es admin, mostrar panel completo
+  // Si es admin, crear el panel en el DOM
   if (currentUser === adminId) {
-    document.getElementById("adminPanel").classList.remove("hidden");
-    document.getElementById("listaTareas").classList.remove("hidden");
-    aplicarFiltros(); // Carga tareas, gráfico y progreso
-  } 
-  // Si es empleado, solo sus tareas y progreso personal
-  else {
-    document.getElementById("listaTareas").classList.remove("hidden");
-    aplicarFiltros(); // Solo mostrará las tareas asignadas a él
+    const container = document.querySelector(".container");
+    const adminPanelHTML = `
+      <section id="adminPanel">
+        <h2>Asignar nueva tarea</h2>
+        <input type="text" id="titulo" placeholder="Título" />
+        <textarea id="comentario" placeholder="Comentario"></textarea>
+        <input type="text" id="asignado" placeholder="Asignar a (ej: 0002,0003,0004)" />
+        <label>Fecha límite:</label>
+        <input type="date" id="fecha" />
+        <label>¿Activar tarea ahora?</label>
+        <select id="activo">
+          <option value="false">No</option>
+          <option value="true">Sí</option>
+        </select>
+        <button onclick="guardarActividad()">Guardar</button>
+
+        <h2>Filtrar por fecha</h2>
+        <label>Desde:</label>
+        <input type="date" id="filtroDesde" />
+        <label>Hasta:</label>
+        <input type="date" id="filtroHasta" />
+        <button onclick="aplicarFiltros()">Filtrar tareas</button>
+        <button onclick="exportarCSV()">Exportar a CSV</button>
+
+        <canvas id="graficoCumplidas"></canvas>
+        <div id="progresoAdmin"></div>
+      </section>
+    `;
+    container.insertAdjacentHTML("beforeend", adminPanelHTML);
+  }
+
+  // Mostrar lista de tareas (siempre)
+  document.getElementById("listaTareas").classList.remove("hidden");
+
+  // Aplicar filtros y cargar datos según rol
+  aplicarFiltros();
+}
+
+function aplicarFiltros() {
+  mostrarTareas();
+  if (currentUser === adminId) {
+    cargarGrafico();
+    mostrarProgresoAdmin();
   }
 }
 
@@ -130,13 +163,7 @@ function guardarActividad() {
 }
 
 // ---------------- Filtros / búsqueda ----------------
-function aplicarFiltros() {
-  mostrarTareas();
-  if (currentUser === adminId) {
-    cargarGrafico();
-    mostrarProgresoAdmin();
-  }
-}
+
 
 
 function resetFiltros() {
