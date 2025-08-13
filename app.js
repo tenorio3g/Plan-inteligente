@@ -87,6 +87,11 @@ function mostrarTareas() {
   const hasta = document.getElementById('filtroHasta')?.value;
   const desdeFecha = desde ? new Date(desde) : null;
   const hastaFecha = hasta ? new Date(hasta) : null;
+    const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
+  const desde = document.getElementById("filtroDesde")?.value || null;
+  const hasta = document.getElementById("filtroHasta")?.value || null;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
   if (hastaFecha) hastaFecha.setHours(23,59,59,999);
 
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
@@ -201,20 +206,6 @@ function eliminarActividad(id) {
   }
 }
 
-function mostrarProgreso(tareas) {
-  const cont = document.getElementById("progresoEmpleado");
-  const total = tareas.length;
-  const fin = tareas.filter(t => t.estado === "finalizado").length;
-  const pct = total > 0 ? Math.round((fin / total) * 100) : 0;
-  let color = pct < 50 ? "#dc3545" : pct < 80 ? "#ffc107" : "#28a745";
-  cont.classList.remove("hidden");
-  cont.innerHTML = `
-    <h2>Progreso: ${fin} de ${total} tareas finalizadas (${pct}%)</h2>
-    <div style="background:#ddd; height:20px; border-radius:10px;">
-      <div style="background:${color}; height:100%; width:${pct}%; border-radius:10px;"></div>
-    </div>
-  `;
-}
 
 // ---------------- Progreso ----------------
 function mostrarProgreso(tareas) {
