@@ -289,7 +289,7 @@ function cargarGrafico() {
 // Agrego solo funciones exportarCSV y exportarPDF + formato fecha
 
 
-async function exportarPDF() {
+  function exportarPDF() {
   if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
 
   const { jsPDF } = window.jspdf;
