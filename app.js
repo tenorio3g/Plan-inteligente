@@ -53,44 +53,38 @@ function toTimestampOrNull(d) {
 }
 
 // ---------------- Login / Logout ----------------
-// ---------------- Login / Logout ----------------
 function login() {
   const id = document.getElementById("employeeId").value.trim();
   if (!id) return mostrarAlerta("⚠️ Ingresa tu número de empleado");
 
   currentUser = id;
 
-  // Ocultar login y mostrar logout
+  // Ocultar login
   document.getElementById("login").classList.add("hidden");
+
+  // Mostrar logout
   document.getElementById("logout").classList.remove("hidden");
 
+  // Si es admin, mostrar panel completo
   if (currentUser === adminId) {
-    // Mostrar panel admin y lista de tareas
     document.getElementById("adminPanel").classList.remove("hidden");
     document.getElementById("listaTareas").classList.remove("hidden");
-    document.getElementById("progresoEmpleado").classList.add("hidden");
-  } else {
-    // Mostrar progreso empleado y lista de tareas
-    document.getElementById("progresoEmpleado").classList.remove("hidden");
+    aplicarFiltros(); // Carga tareas, gráfico y progreso
+  } 
+  // Si es empleado, solo sus tareas y progreso personal
+  else {
     document.getElementById("listaTareas").classList.remove("hidden");
-    document.getElementById("adminPanel").classList.add("hidden");
+    aplicarFiltros(); // Solo mostrará las tareas asignadas a él
   }
-
-  aplicarFiltros();
 }
 
 function logout() {
   currentUser = null;
-
-  // Mostrar login, ocultar paneles y lista
   document.getElementById("login").classList.remove("hidden");
-  document.getElementById("logout").classList.add("hidden");
   document.getElementById("adminPanel").classList.add("hidden");
   document.getElementById("listaTareas").classList.add("hidden");
-  document.getElementById("progresoEmpleado").classList.add("hidden");
-
+  document.getElementById("logout").classList.add("hidden");
   document.getElementById("listaTareas").innerHTML = "";
-
   mostrarAlerta("Sesión cerrada");
 }
 
@@ -136,7 +130,13 @@ function guardarActividad() {
 }
 
 // ---------------- Filtros / búsqueda ----------------
-
+function aplicarFiltros() {
+  mostrarTareas();
+  if (currentUser === adminId) {
+    cargarGrafico();
+    mostrarProgresoAdmin();
+  }
+}
 
 
 function resetFiltros() {
