@@ -216,43 +216,48 @@ function mostrarProgreso(tareas) {
   `;
 }
 
+// ---------------- Progreso ----------------
+function mostrarProgreso(tareas) {
+  const cont = document.getElementById("progresoEmpleado");
+  if (!cont) return;
+  const total = tareas.length;
+  const fin = tareas.filter(t => t.estado === "finalizado").length;
+  const pct = total ? Math.round((fin/total)*100) : 0;
+  cont.classList.remove("hidden");
+  cont.innerHTML = `<h2>Progreso: ${fin} / ${total} (${pct}%)</h2>
+    <div class="bar"><div style="width:${pct}%;background:${pct<50?'#dc3545':pct<80?'#ffc107':'#28a745'}"></div></div>`;
+}
+
 function mostrarProgresoAdmin() {
   const desde = document.getElementById('filtroDesde')?.value;
   const hasta = document.getElementById('filtroHasta')?.value;
-  const desdeFecha = desde ? new Date(desde) : null;
-  const hastaFecha = hasta ? new Date(hasta) : null;
-  if (hastaFecha) hastaFecha.setHours(23, 59, 59, 999);
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
   db.collection("actividades").onSnapshot(snapshot => {
     const progreso = {};
     snapshot.forEach(doc => {
       const data = doc.data();
-      const fechaActividad = data.fecha ? new Date(data.fecha) : null;
+      // date filter
+      let fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
-      data.asignados?.forEach(emp => {
-        if (!progreso[emp]) progreso[emp] = { total: 0, finalizadas: 0 };
+      (data.asignados||[]).forEach(emp => {
+        progreso[emp] = progreso[emp] || { total:0, finalizadas:0 };
         progreso[emp].total++;
         if (data.estado === "finalizado") progreso[emp].finalizadas++;
       });
     });
 
     const cont = document.getElementById("progresoAdmin");
-    cont.innerHTML = "<h2>Progreso de Empleados</h2>";
-    for (const emp in progreso) {
-      const total = progreso[emp].total;
-      const fin = progreso[emp].finalizadas;
-      const pct = total > 0 ? Math.round((fin / total) * 100) : 0;
-      let color = pct < 50 ? "#dc3545" : pct < 80 ? "#ffc107" : "#28a745";
-
-      cont.innerHTML += `
-        <h3>Empleado: ${emp} - ${fin} de ${total} (${pct}%)</h3>
-        <div style="background:#ddd; height:20px; border-radius:10px; margin-bottom:10px;">
-          <div style="background:${color}; height:100%; width:${pct}%; border-radius:10px;"></div>
-        </div>
-      `;
-    }
+    if (!cont) return;
+    cont.innerHTML = "<h2>Progreso por empleado</h2>";
+    Object.keys(progreso).forEach(emp => {
+      const p = progreso[emp];
+      const pct = p.total ? Math.round((p.finalizadas/p.total)*100) : 0;
+      cont.innerHTML += `<div class="emp-row"><strong>${escapeHtml(emp)}</strong> - ${p.finalizadas}/${p.total} (${pct}%)<div class="bar"><div style="width:${pct}%;background:${pct<50?'#dc3545':pct<80?'#ffc107':'#28a745'}"></div></div></div>`;
+    });
   });
 }
 
@@ -293,17 +298,6 @@ function cargarGrafico() {
     });
   });
 }
-
-
-function mostrarAlerta(mensaje) {
-  const alerta = document.createElement("div");
-  alerta.className = "alerta";
-  alerta.textContent = mensaje;
-  document.getElementById("alerta-container").appendChild(alerta);
-  setTimeout(() => alerta.remove(), 4000);
-}
-
-
 
 // ---------------- Export CSV / PDF ----------------
 function exportarCSV() {
@@ -348,10 +342,6 @@ async function exportarPDF() {
   mostrarAlerta("✅ PDF generado");
 }
 
-
-
-
-
 // ---------------- Utilities ----------------
 function escapeHtml(s="") {
   return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
@@ -367,9 +357,7 @@ function colorForKey(k) {
 }
 function hashCode(s) { let h=0; for(let i=0;i<s.length;i++){h=(h<<5)-h + s.charCodeAt(i); h|=0;} return h; }
 
-
-
-// Exportar funciones al entorno global (HTML)
+// ---------------- Init ----------------
 window.login = login;
 window.logout = logout;
 window.guardarActividad = guardarActividad;
@@ -378,4 +366,10 @@ window.agregarComentario = agregarComentario;
 window.eliminarActividad = eliminarActividad;
 window.toggleActivo = toggleActivo;
 window.aplicarFiltros = aplicarFiltros;
+window.resetFiltros = resetFiltros;
+window.exportarCSV = exportarCSV;
 window.exportarPDF = exportarPDF;
+
+// Start listeners for graph/progress even before login (ok)
+cargarGrafico();
+mostrarProgresoAdmin();
