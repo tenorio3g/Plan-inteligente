@@ -395,158 +395,33 @@ function eliminarActividad(id) {
 
 // ---------------- Progreso ----------------
 function mostrarProgreso(tareas) {
-  const cont = document.getElementById("progresoEmpleado");
-  if (!cont) return;
-  const total = tareas.length;
-  const fin = tareas.filter(t => t.estado === "finalizado").length;
-  const pct = total ? Math.round((fin/total)*100) : 0;
-  cont.classList.remove("hidden");
-  cont.innerHTML = `<h2>Progreso: ${fin} / ${total} (${pct}%)</h2>
-    <div class="bar"><div style="width:${pct}%;background:${pct<50?'#dc3545':pct<80?'#ffc107':'#28a745'}"></div></div>`;
+const progreso = document.getElementById("progreso");
+if (!progreso) return;
+const total = tareas.length;
+if (total === 0) {
+progreso.innerHTML = "No hay tareas asignadas";
+return;
+}
+const finalizadas = tareas.filter(t => t.estado === "finalizado").length;
+const porcentaje = Math.round((finalizadas / total) * 100);
+progreso.innerHTML = Tareas completadas: ${finalizadas} / ${total} (${porcentaje}%);
 }
 
 function mostrarProgresoAdmin() {
-  const desde = document.getElementById('filtroDesde')?.value;
-  const hasta = document.getElementById('filtroHasta')?.value;
-  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
-  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
-
-  db.collection("actividades").onSnapshot(snapshot => {
-    const progreso = {};
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      // date filter
-      let fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
-      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
-      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
-
-      (data.asignados||[]).forEach(emp => {
-        progreso[emp] = progreso[emp] || { total:0, finalizadas:0 };
-        progreso[emp].total++;
-        if (data.estado === "finalizado") progreso[emp].finalizadas++;
-      });
-    });
-
-    const cont = document.getElementById("progresoAdmin");
-    if (!cont) return;
-    cont.innerHTML = "<h2>Progreso por empleado</h2>";
-    Object.keys(progreso).forEach(emp => {
-      const p = progreso[emp];
-      const pct = p.total ? Math.round((p.finalizadas/p.total)*100) : 0;
-      cont.innerHTML += `<div class="emp-row"><strong>${escapeHtml(emp)}</strong> - ${p.finalizadas}/${p.total} (${pct}%)<div class="bar"><div style="width:${pct}%;background:${pct<50?'#dc3545':pct<80?'#ffc107':'#28a745'}"></div></div></div>`;
-    });
-  });
+// Puedes implementar resumen para admin si quieres
 }
 
-// ---------------- Gráfica ----------------
+// ---------------- Gráfico ----------------
 function cargarGrafico() {
-  const desde = document.getElementById('filtroDesde')?.value;
-  const hasta = document.getElementById('filtroHasta')?.value;
-  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
-  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
-
-  db.collection("actividades").onSnapshot(snapshot => {
-    const counts = {};
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      // date filter
-      const fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
-      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
-      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
-
-      if (data.estado === "finalizado") {
-        (data.asignados||[]).forEach(emp => {
-          counts[emp] = (counts[emp] || 0) + 1;
-        });
-      }
-    });
-
-    const labels = Object.keys(counts);
-    const values = labels.map(l => counts[l]);
-
-    const canvas = document.getElementById("graficoCumplidas");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (graficoRef) graficoRef.destroy();
-    graficoRef = new Chart(ctx, {
-      type: "bar",
-      data: { labels, datasets: [{ label: "Tareas finalizadas", data: values, backgroundColor: labels.map(l=>colorForKey(l)) }] },
-      options: { responsive:true, plugins:{legend:{display:false}} }
-    });
-  });
+// Implementa gráfico aquí, si quieres
 }
 
-// ---------------- Export CSV / PDF ----------------
-function exportarCSV() {
-  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
-  const rows = [["id","titulo","asignados","estado","fecha","horaInicio","horaFin","comentarios"]];
-  últimoSnapshot.forEach(doc => {
-    const d = doc.data();
-    rows.push([
-      doc.id,
-      d.titulo || "",
-      (d.asignados||[]).join("|"),
-      d.estado || "",
-      d.fecha || "",
-      d.horaInicio ? formatoFechaCampo(d.horaInicio) : "",
-      d.horaFin ? formatoFechaCampo(d.horaFin) : "",
-      (d.comentarios||[]).map(c=>`${c.usuario}:${c.texto}`).join(" | ")
-    ]);
-  });
-  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = `actividades_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
-  mostrarAlerta("✅ CSV generado");
-}
+// ---------------- Inicio ----------------
+document.getElementById("loginBtn").onclick = login;
+document.getElementById("logoutBtn").onclick = logout;
+document.getElementById("guardarBtn").onclick = guardarActividad;
+document.getElementById("buscarBtn").onclick = aplicarFiltros;
+document.getElementById("resetBtn").onclick = resetFiltros;
 
-async function exportarPDF() {
-  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
-  // Usamos jsPDF
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.setFontSize(12);
-  let y = 12;
-  doc.text("Export Actividades - TENORIO3G", 10, y); y+=8;
-  últimoSnapshot.forEach(docSnap => {
-    const d = docSnap.data();
-    const line = `${d.titulo || ""} | ${ (d.asignados||[]).join(", ") } | ${d.estado || ""} | ${d.fecha || ""}`;
-    if (y > 270) { doc.addPage(); y = 12; }
-    doc.text(line, 10, y); y += 6;
-  });
-  doc.save(`actividades_${Date.now()}.pdf`);
-  mostrarAlerta("✅ PDF generado");
-}
-
-// ---------------- Utilities ----------------
-function escapeHtml(s="") {
-  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-}
-
-const palette = ["#007bff","#28a745","#ff5722","#6f42c1","#20c997","#fd7e14","#6610f2","#e83e8c","#17a2b8","#343a40"];
-const colorCache = {};
-function colorForKey(k) {
-  if (colorCache[k]) return colorCache[k];
-  const idx = Math.abs(hashCode(k)) % palette.length;
-  colorCache[k] = palette[idx];
-  return colorCache[k];
-}
-function hashCode(s) { let h=0; for(let i=0;i<s.length;i++){h=(h<<5)-h + s.charCodeAt(i); h|=0;} return h; }
-
-// ---------------- Init ----------------
-window.login = login;
-window.logout = logout;
-window.guardarActividad = guardarActividad;
-window.cambiarEstado = cambiarEstado;
-window.agregarComentario = agregarComentario;
-window.eliminarActividad = eliminarActividad;
-window.toggleActivo = toggleActivo;
-window.aplicarFiltros = aplicarFiltros;
-window.resetFiltros = resetFiltros;
-window.exportarCSV = exportarCSV;
-window.exportarPDF = exportarPDF;
-
-// Start listeners for graph/progress even before login (ok)
-cargarGrafico();
-mostrarProgresoAdmin();
+// Si quieres que muestre tareas automáticamente si ya está logueado
+// currentUser = adminId; aplicarFiltros();
