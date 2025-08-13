@@ -294,8 +294,7 @@ function cargarGrafico() {
   function exportarPDF() {
   if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+const doc = new window.jspdf.jsPDF();
 
   const columnas = [
     { header: 'ID', dataKey: 'id' },
