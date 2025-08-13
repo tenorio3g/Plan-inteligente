@@ -256,51 +256,44 @@ function mostrarProgresoAdmin() {
   });
 }
 
+// ---------------- Gráfica ----------------
 function cargarGrafico() {
   const desde = document.getElementById('filtroDesde')?.value;
   const hasta = document.getElementById('filtroHasta')?.value;
-  const desdeFecha = desde ? new Date(desde) : null;
-  const hastaFecha = hasta ? new Date(hasta) : null;
-  if (hastaFecha) hastaFecha.setHours(23, 59, 59, 999);
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
   db.collection("actividades").onSnapshot(snapshot => {
     const counts = {};
     snapshot.forEach(doc => {
       const data = doc.data();
-      const fechaActividad = data.fecha ? new Date(data.fecha) : null;
+      // date filter
+      const fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
       if (data.estado === "finalizado") {
-        data.asignados?.forEach(emp => {
-          if (!counts[emp]) counts[emp] = 0;
-          counts[emp]++;
+        (data.asignados||[]).forEach(emp => {
+          counts[emp] = (counts[emp] || 0) + 1;
         });
       }
     });
 
-    const ctx = document.getElementById("graficoCumplidas").getContext("2d");
+    const labels = Object.keys(counts);
+    const values = labels.map(l => counts[l]);
+
+    const canvas = document.getElementById("graficoCumplidas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
     if (graficoRef) graficoRef.destroy();
     graficoRef = new Chart(ctx, {
       type: "bar",
-      data: {
-        labels: Object.keys(counts),
-        datasets: [{
-          label: "Tareas finalizadas",
-          data: Object.values(counts),
-          backgroundColor: "rgba(75,192,192,0.6)"
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: "Tareas finalizadas por usuario (filtradas)" }
-        }
-      }
+      data: { labels, datasets: [{ label: "Tareas finalizadas", data: values, backgroundColor: labels.map(l=>colorForKey(l)) }] },
+      options: { responsive:true, plugins:{legend:{display:false}} }
     });
   });
 }
+
 
 function mostrarAlerta(mensaje) {
   const alerta = document.createElement("div");
@@ -385,3 +378,4 @@ window.agregarComentario = agregarComentario;
 window.eliminarActividad = eliminarActividad;
 window.toggleActivo = toggleActivo;
 window.aplicarFiltros = aplicarFiltros;
+window.exportarPDF = exportarPDF;
