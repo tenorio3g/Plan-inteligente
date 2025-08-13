@@ -147,6 +147,9 @@ function resetFiltros() {
 }
 
 // ---------------- Mostrar tareas (más eficiente) ----------------
+// ---------------- Mostrar tareas (más eficiente) ----------------
+let unsubscribeTareas = null; // para evitar duplicar listeners
+
 function mostrarTareas() {
   const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
   const desde = document.getElementById("filtroDesde")?.value || null;
@@ -154,63 +157,62 @@ function mostrarTareas() {
   const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
   const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
-  // Si es empleado, podemos usar array-contains para reducir datos
+  // Si ya hay un listener previo, lo cerramos para no duplicar
+  if (unsubscribeTareas) unsubscribeTareas();
+
+  // Query base (admin: todas, empleado: solo asignadas)
   let query = db.collection("actividades").orderBy("creada", "desc");
   if (currentUser && currentUser !== adminId) {
-    query = db.collection("actividades").where("asignados", "array-contains", currentUser).orderBy("creada", "desc");
+    query = db.collection("actividades")
+      .where("asignados", "array-contains", currentUser)
+      .orderBy("creada", "desc");
   }
 
-  query.onSnapshot(snapshot => {
+  unsubscribeTareas = query.onSnapshot(snapshot => {
     últimoSnapshot = snapshot; // para export
     const lista = document.getElementById("listaTareas");
     lista.innerHTML = "";
     const tareasEmpleado = [];
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
 
     snapshot.forEach(doc => {
       const data = doc.data();
       const id = doc.id;
 
-      // safe fecha (string or timestamp)
+      // Fecha de actividad
       let fechaActividad = null;
-      if (data.fecha) {
-        // data.fecha stored as "YYYY-MM-DD" string in this design
-        fechaActividad = new Date(data.fecha + "T00:00:00");
-      }
+      if (data.fecha) fechaActividad = new Date(data.fecha + "T00:00:00");
 
-      // Aplica filtros de fecha si existen
+      // Filtros
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
-      // Aplica búsqueda por texto (título o asignado)
       if (buscar) {
         const inTitle = (data.titulo || "").toLowerCase().includes(buscar);
         const inAsignados = (data.asignados || []).some(a => a.toLowerCase().includes(buscar));
         if (!inTitle && !inAsignados) return;
       }
 
-      const hoy = new Date(); hoy.setHours(0,0,0,0);
-      const fechaLimite = fechaActividad;
+      // Control de visibilidad para empleados
       const esAsignado = (data.asignados || []).includes(currentUser);
+      const fechaLimite = fechaActividad;
       const visibleParaEmpleado = currentUser !== adminId && esAsignado && data.activo && (!fechaLimite || fechaLimite <= hoy);
 
       if (!(currentUser === adminId || visibleParaEmpleado)) return;
 
       if (esAsignado) tareasEmpleado.push({ ...data, id });
 
-      // Build DOM
+      // Resto igual que antes...
       const div = document.createElement("div");
       div.className = `tarea ${data.estado || "pendiente"}`;
       const vencida = fechaLimite && fechaLimite < hoy;
       if (vencida && data.estado !== "finalizado") div.classList.add("vencida");
 
-      // Mostrar horas (timestamp o Date)
       const horaInicioText = data.horaInicio ? formatoFechaCampo(data.horaInicio) : "";
       const horaFinText = data.horaFin ? formatoFechaCampo(data.horaFin) : "";
 
-      // Build buttons + inputs conditionally
       let accionesHTML = "";
       if (esAsignado || currentUser === adminId) {
-        // show inputs for manual times when appropriate
         if (data.estado === "pendiente" && esAsignado) {
           accionesHTML += `<div class="inline-field"><label>Hora inicio (opcional)</label><input type="datetime-local" id="horaInicio-${id}" /></div>`;
           accionesHTML += `<button onclick="cambiarEstado('${id}','iniciado')">Iniciar</button>`;
@@ -227,7 +229,6 @@ function mostrarTareas() {
         accionesHTML += `<button class="small" onclick="agregarComentario('${id}')">Comentar</button>`;
       }
 
-      // Admin controls
       let adminHTML = "";
       if (currentUser === adminId) {
         adminHTML = `<div class="admin-controls">
@@ -244,7 +245,7 @@ function mostrarTareas() {
         ${data.fecha ? `<p><strong>Fecha límite:</strong> ${escapeHtml(data.fecha)} ${vencida ? "⚠️ Vencida" : ""}</p>` : ""}
         ${horaInicioText ? `<p><strong>Hora inicio:</strong> ${horaInicioText}</p>` : ""}
         ${horaFinText ? `<p><strong>Hora fin:</strong> ${horaFinText}</p>` : ""}
-        ${ (data.comentarios||[]).map(c => `<p class="coment">🗨️ ${escapeHtml(c.usuario)}: ${escapeHtml(c.texto)}</p>`).join("")}
+        ${(data.comentarios||[]).map(c => `<p class="coment">🗨️ ${escapeHtml(c.usuario)}: ${escapeHtml(c.texto)}</p>`).join("")}
         <div class="acciones">${accionesHTML}</div>
         ${adminHTML}
       `;
