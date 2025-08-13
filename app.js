@@ -286,9 +286,22 @@ function cargarGrafico() {
 }
 
 // ---------------- Export CSV / PDF ----------------
+// Agrego solo funciones exportarCSV y exportarPDF + formato fecha
+
+function formatoFechaCampo(fecha) {
+  let d = fecha;
+  if (fecha?.toDate) d = fecha.toDate();
+  if (!(d instanceof Date)) d = new Date(d);
+  return d.toLocaleString();
+}
+
+function mostrarAlerta(msg) {
+  alert(msg);
+}
+
 function exportarCSV() {
   if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
-  const rows = [["id","titulo","asignados","estado","fecha","horaInicio","horaFin","comentarios"]];
+  const rows = [["ID","Título","Asignados","Estado","Fecha límite","Hora inicio","Hora fin","Comentarios"]];
   últimoSnapshot.forEach(doc => {
     const d = doc.data();
     rows.push([
@@ -299,32 +312,80 @@ function exportarCSV() {
       d.fecha || "",
       d.horaInicio ? formatoFechaCampo(d.horaInicio) : "",
       d.horaFin ? formatoFechaCampo(d.horaFin) : "",
-      (d.comentarios||[]).map(c=>`${c.usuario}:${c.texto}`).join(" | ")
+      (d.comentarios||[]).map(c=>\`\${c.usuario}:\${c.texto}\`).join(" | ")
     ]);
   });
-  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const csv = rows.map(r => r.map(cell => \`"\${String(cell).replace(/"/g,'""')}"\`).join(",")).join("\n");
   const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = `actividades_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+  a.href = url;
+  a.download = \`actividades_export_\${Date.now()}.csv\`;
+  a.click();
+  URL.revokeObjectURL(url);
   mostrarAlerta("✅ CSV generado");
 }
 
 async function exportarPDF() {
   if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
-  // Usamos jsPDF
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  doc.setFontSize(12);
-  let y = 12;
-  doc.text("Export Actividades - TENORIO3G", 10, y); y+=8;
+
+  const columnas = [
+    { header: 'ID', dataKey: 'id' },
+    { header: 'Título', dataKey: 'titulo' },
+    { header: 'Asignados', dataKey: 'asignados' },
+    { header: 'Estado', dataKey: 'estado' },
+    { header: 'Fecha límite', dataKey: 'fecha' },
+    { header: 'Hora inicio', dataKey: 'horaInicio' },
+    { header: 'Hora fin', dataKey: 'horaFin' },
+    { header: 'Comentarios', dataKey: 'comentarios' },
+  ];
+
+  const filas = [];
   últimoSnapshot.forEach(docSnap => {
     const d = docSnap.data();
-    const line = `${d.titulo || ""} | ${ (d.asignados||[]).join(", ") } | ${d.estado || ""} | ${d.fecha || ""}`;
-    if (y > 270) { doc.addPage(); y = 12; }
-    doc.text(line, 10, y); y += 6;
+    filas.push({
+      id: docSnap.id,
+      titulo: d.titulo || '',
+      asignados: (d.asignados || []).join(", "),
+      estado: d.estado || '',
+      fecha: d.fecha || '',
+      horaInicio: d.horaInicio ? formatoFechaCampo(d.horaInicio) : '',
+      horaFin: d.horaFin ? formatoFechaCampo(d.horaFin) : '',
+      comentarios: (d.comentarios || []).map(c => \`\${c.usuario}: \${c.texto}\`).join("\n")
+    });
   });
-  doc.save(`actividades_${Date.now()}.pdf`);
+
+  doc.setFontSize(14);
+  doc.text("Reporte de Actividades - TENORIO3G", 14, 15);
+
+  doc.autoTable({
+    startY: 22,
+    head: [columnas.map(c => c.header)],
+    body: filas.map(f => columnas.map(c => f[c.dataKey])),
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+    theme: 'striped',
+    columnStyles: {
+      0: { cellWidth: 20 },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 35 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 25 },
+      5: { cellWidth: 25 },
+      6: { cellWidth: 25 },
+      7: { cellWidth: 60 },
+    },
+    didDrawPage: (data) => {
+      let str = "Página " + doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+    }
+  });
+
+  doc.save(\`actividades_\${Date.now()}.pdf\`);
   mostrarAlerta("✅ PDF generado");
 }
 
