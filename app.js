@@ -288,16 +288,6 @@ function cargarGrafico() {
 // ---------------- Export CSV / PDF ----------------
 // Agrego solo funciones exportarCSV y exportarPDF + formato fecha
 
-function formatoFechaCampo(fecha) {
-  let d = fecha;
-  if (fecha?.toDate) d = fecha.toDate();
-  if (!(d instanceof Date)) d = new Date(d);
-  return d.toLocaleString();
-}
-
-function mostrarAlerta(msg) {
-  alert(msg);
-}
 
 function exportarCSV() {
   if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
