@@ -77,15 +77,6 @@ function login() {
   }
 }
 
-function logout() {
-  currentUser = null;
-  document.getElementById("login").classList.remove("hidden");
-  document.getElementById("adminPanel").classList.add("hidden");
-  document.getElementById("listaTareas").classList.add("hidden");
-  document.getElementById("logout").classList.add("hidden");
-  document.getElementById("listaTareas").innerHTML = "";
-  mostrarAlerta("Sesión cerrada");
-}
 
 // ---------------- Guardar actividad (admin) ----------------
 function guardarActividad() {
@@ -145,7 +136,7 @@ function resetFiltros() {
   aplicarFiltros();
 }
 
-// ---------------- Mostrar tareas (más eficiente) ----------------
+
 // ---------------- Mostrar tareas (más eficiente) ----------------
 let unsubscribeTareas = null; // para evitar duplicar listeners
 
@@ -265,10 +256,10 @@ function cambiarEstado(id, nuevoEstado) {
 
   if (nuevoEstado === "iniciado") {
     const inputVal = document.getElementById(`horaInicio-${id}`)?.value;
-    updateData.horaInicio = inputVal ? firebase.firestore.Timestamp.fromDate(new Date(inputVal)) : firebase.firestore.Timestamp.fromDate(new Date());
+    updateData.horaInicio = inputVal ? firebase.firestore.Timestamp.fromDate(new Date(inputVal)) : null;
   } else if (nuevoEstado === "finalizado") {
     const inputVal = document.getElementById(`horaFin-${id}`)?.value;
-    updateData.horaFin = inputVal ? firebase.firestore.Timestamp.fromDate(new Date(inputVal)) : firebase.firestore.Timestamp.fromDate(new Date());
+    updateData.horaFin = inputVal ? firebase.firestore.Timestamp.fromDate(new Date(inputVal)) : null;
   } else if (nuevoEstado === "pendiente") {
     updateData.horaInicio = null;
     updateData.horaFin = null;
@@ -303,18 +294,6 @@ function agregarComentario(id) {
 }
 
 // ---------------- Toggle activo / eliminar ----------------
-function toggleActivo(id, estado) {
-  db.collection("actividades").doc(id).update({ activo: estado })
-    .then(() => mostrarAlerta(estado ? "✅ Activada" : "✅ Desactivada"))
-    .catch(err => { console.error(err); mostrarAlerta("❌ Error"); });
-}
-
-function eliminarActividad(id) {
-  if (!confirm("¿Eliminar actividad?")) return;
-  db.collection("actividades").doc(id).delete()
-    .then(() => mostrarAlerta("✅ Eliminada"))
-    .catch(err => { console.error(err); mostrarAlerta("❌ Error al eliminar"); });
-}
 
 // ---------------- Progreso ----------------
 function mostrarProgreso(tareas) {
@@ -362,85 +341,9 @@ function mostrarProgresoAdmin() {
 }
 
 // ---------------- Gráfica ----------------
-function cargarGrafico() {
-  const desde = document.getElementById('filtroDesde')?.value;
-  const hasta = document.getElementById('filtroHasta')?.value;
-  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
-  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
-
-  db.collection("actividades").onSnapshot(snapshot => {
-    const counts = {};
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      // date filter
-      const fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
-      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
-      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
-
-      if (data.estado === "finalizado") {
-        (data.asignados||[]).forEach(emp => {
-          counts[emp] = (counts[emp] || 0) + 1;
-        });
-      }
-    });
-
-    const labels = Object.keys(counts);
-    const values = labels.map(l => counts[l]);
-
-    const canvas = document.getElementById("graficoCumplidas");
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (graficoRef) graficoRef.destroy();
-    graficoRef = new Chart(ctx, {
-      type: "bar",
-      data: { labels, datasets: [{ label: "Tareas finalizadas", data: values, backgroundColor: labels.map(l=>colorForKey(l)) }] },
-      options: { responsive:true, plugins:{legend:{display:false}} }
-    });
-  });
-}
 
 // ---------------- Export CSV / PDF ----------------
-function exportarCSV() {
-  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
-  const rows = [["id","titulo","asignados","estado","fecha","horaInicio","horaFin","comentarios"]];
-  últimoSnapshot.forEach(doc => {
-    const d = doc.data();
-    rows.push([
-      doc.id,
-      d.titulo || "",
-      (d.asignados||[]).join("|"),
-      d.estado || "",
-      d.fecha || "",
-      d.horaInicio ? formatoFechaCampo(d.horaInicio) : "",
-      d.horaFin ? formatoFechaCampo(d.horaFin) : "",
-      (d.comentarios||[]).map(c=>`${c.usuario}:${c.texto}`).join(" | ")
-    ]);
-  });
-  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = `actividades_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
-  mostrarAlerta("✅ CSV generado");
-}
 
-async function exportarPDF() {
-  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
-  // Usamos jsPDF
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.setFontSize(12);
-  let y = 12;
-  doc.text("Export Actividades - TENORIO3G", 10, y); y+=8;
-  últimoSnapshot.forEach(docSnap => {
-    const d = docSnap.data();
-    const line = `${d.titulo || ""} | ${ (d.asignados||[]).join(", ") } | ${d.estado || ""} | ${d.fecha || ""}`;
-    if (y > 270) { doc.addPage(); y = 12; }
-    doc.text(line, 10, y); y += 6;
-  });
-  doc.save(`actividades_${Date.now()}.pdf`);
-  mostrarAlerta("✅ PDF generado");
-}
 
 // ---------------- Utilities ----------------
 function escapeHtml(s="") {
