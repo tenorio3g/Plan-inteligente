@@ -1,312 +1,476 @@
-// =========================
-// CONFIGURACIÓN FIREBASE
-// =========================
+// app.js (versión optimizada con exportar PDF)
+
+// ---------------- Firebase config ----------------
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_STORAGE_BUCKET",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  authDomain: "tareas-inteligentes.firebaseapp.com",
+  projectId: "tareas-inteligentes",
+  storageBucket: "tareas-inteligentes.appspot.com",
+  messagingSenderId: "1016472192983",
+  appId: "1:1016472192983:web:369bbf0942a95e5ccbad92",
+  measurementId: "G-QM9K6W0C4Q"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// =========================
-// VARIABLES GLOBALES
-// =========================
-let usuarioActual = null;
-let actividadesGlobal = []; // Siempre contiene TODAS las tareas
+// ---------------- Globals ----------------
+const adminId = "0001";
+let currentUser = null;
+let graficoRef = null;
+let últimoSnapshot = null; // para export
 
-// =========================
-// LOGIN Y LOGOUT
-// =========================
+// ---------------- Helpers ----------------
+function mostrarAlerta(text, ms = 3500) {
+  let cont = document.getElementById("alerta-container");
+  if (!cont) {
+    cont = document.createElement("div");
+    cont.id = "alerta-container";
+    document.body.appendChild(cont);
+  }
+  const el = document.createElement("div");
+  el.className = "alerta";
+  el.innerHTML = text;
+  cont.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = 0;
+    setTimeout(() => el.remove(), 300);
+  }, ms);
+}
+
+function formatoFechaCampo(f) {
+  if (!f) return "";
+  const d = (f.seconds ? f.toDate() : new Date(f));
+  return d.toLocaleString();
+}
+
+function toTimestampOrNull(d) {
+  if (!d) return null;
+  if (d instanceof Date) return firebase.firestore.Timestamp.fromDate(d);
+  // if it's ISO string
+  const parsed = new Date(d);
+  if (!isNaN(parsed)) return firebase.firestore.Timestamp.fromDate(parsed);
+  return null;
+}
+
+// ---------------- Login / Logout ----------------
 function login() {
   const id = document.getElementById("employeeId").value.trim();
-  if (!id) {
-    mostrarAlerta("Ingrese un número de empleado", "error");
-    return;
-  }
-  usuarioActual = id;
+  if (!id) return mostrarAlerta("⚠️ Ingresa tu número de empleado");
+
+  currentUser = id;
+
+  // Ocultar login
   document.getElementById("login").classList.add("hidden");
+
+  // Mostrar logout
   document.getElementById("logout").classList.remove("hidden");
 
-  if (usuarioActual === "0001") {
+  // Si es admin, mostrar panel completo
+  if (currentUser === adminId) {
     document.getElementById("adminPanel").classList.remove("hidden");
-    escucharActividadesAdmin();
-  } else {
-    document.getElementById("progresoEmpleado").classList.remove("hidden");
-    escucharActividadesEmpleado();
+    document.getElementById("listaTareas").classList.remove("hidden");
+    aplicarFiltros(); // Carga tareas, gráfico y progreso
+  } 
+  // Si es empleado, solo sus tareas y progreso personal
+  else {
+    document.getElementById("listaTareas").classList.remove("hidden");
+    aplicarFiltros(); // Solo mostrará las tareas asignadas a él
   }
 }
 
 function logout() {
-  usuarioActual = null;
-  actividadesGlobal = [];
+  currentUser = null;
   document.getElementById("login").classList.remove("hidden");
-  document.getElementById("logout").classList.add("hidden");
   document.getElementById("adminPanel").classList.add("hidden");
-  document.getElementById("progresoEmpleado").classList.add("hidden");
+  document.getElementById("listaTareas").classList.add("hidden");
+  document.getElementById("logout").classList.add("hidden");
   document.getElementById("listaTareas").innerHTML = "";
-  document.getElementById("progresoAdmin").innerHTML = "";
+  mostrarAlerta("Sesión cerrada");
 }
 
-// =========================
-// ESCUCHA EN TIEMPO REAL
-// =========================
-function escucharActividadesAdmin() {
-  db.collection("actividades").orderBy("fecha", "asc").onSnapshot((snapshot) => {
-    actividadesGlobal = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderizarLista(actividadesGlobal);
-    renderizarGraficoAdmin(actividadesGlobal);
-  });
-}
-
-function escucharActividadesEmpleado() {
-  db.collection("actividades")
-    .where("asignado", "array-contains", usuarioActual)
-    .orderBy("fecha", "asc")
-    .onSnapshot((snapshot) => {
-      actividadesGlobal = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      renderizarListaEmpleado(actividadesGlobal);
-    });
-}
-
-// =========================
-// GUARDAR ACTIVIDAD
-// =========================
+// ---------------- Guardar actividad (admin) ----------------
 function guardarActividad() {
   const titulo = document.getElementById("titulo").value.trim();
   const comentario = document.getElementById("comentario").value.trim();
-  const asignado = document.getElementById("asignado").value.trim().split(",").map(x => x.trim());
+  const asignadoRaw = document.getElementById("asignado").value.trim();
   const fecha = document.getElementById("fecha").value;
   const activo = document.getElementById("activo").value === "true";
 
-  if (!titulo || !asignado.length || !fecha) {
-    mostrarAlerta("Complete todos los campos obligatorios", "error");
-    return;
-  }
+  if (!titulo || !asignadoRaw) return mostrarAlerta("⚠️ Título y asignado son obligatorios");
 
-  db.collection("actividades").add({
+  const asignados = asignadoRaw.split(",").map(s => s.trim()).filter(Boolean);
+
+  const nueva = {
     titulo,
     comentario,
-    asignado,
-    fecha,
-    activo,
+    asignados,
+    fecha: fecha ? fecha : null, // almacenamos como string YYYY-MM-DD (compatible)
     estado: "pendiente",
-    historial: [],
-    creadoEn: firebase.firestore.Timestamp.now()
-  }).then(() => {
-    mostrarAlerta("Actividad guardada correctamente", "success");
-    document.getElementById("titulo").value = "";
-    document.getElementById("comentario").value = "";
-    document.getElementById("asignado").value = "";
-    document.getElementById("fecha").value = "";
-  });
+    activo,
+    horaInicio: null,
+    horaFin: null,
+    comentarios: [],
+    creada: firebase.firestore.Timestamp.fromDate(new Date())
+  };
+
+  db.collection("actividades").add(nueva)
+    .then(() => {
+      document.getElementById("titulo").value = "";
+      document.getElementById("comentario").value = "";
+      document.getElementById("asignado").value = "";
+      document.getElementById("fecha").value = "";
+      document.getElementById("activo").value = "false";
+      mostrarAlerta("✅ Actividad guardada");
+      aplicarFiltros();
+    })
+    .catch(err => {
+      console.error("Error guardar:", err);
+      mostrarAlerta("❌ Error al guardar (ver consola)");
+    });
 }
 
-// =========================
-// RENDERIZAR LISTAS
-// =========================
-function renderizarLista(lista) {
-  const contenedor = document.getElementById("listaTareas");
-  contenedor.innerHTML = "";
+// ---------------- Filtros / búsqueda ----------------
+function aplicarFiltros() {
+  mostrarTareas();
+  if (currentUser === adminId) {
+    cargarGrafico();
+    mostrarProgresoAdmin();
+  }
+}
 
-  if (!lista.length) {
-    contenedor.innerHTML = "<p>No hay tareas registradas</p>";
-    return;
+
+function resetFiltros() {
+  document.getElementById("filtroDesde").value = "";
+  document.getElementById("filtroHasta").value = "";
+  document.getElementById("buscarTexto").value = "";
+  aplicarFiltros();
+}
+
+// ---------------- Mostrar tareas (más eficiente) ----------------
+// ---------------- Mostrar tareas (más eficiente) ----------------
+let unsubscribeTareas = null; // para evitar duplicar listeners
+
+function mostrarTareas() {
+  const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
+  const desde = document.getElementById("filtroDesde")?.value || null;
+  const hasta = document.getElementById("filtroHasta")?.value || null;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
+
+  // Si ya hay un listener previo, lo cerramos para no duplicar
+  if (unsubscribeTareas) unsubscribeTareas();
+
+  // Query base (admin: todas, empleado: solo asignadas)
+  let query = db.collection("actividades").orderBy("creada", "desc");
+  if (currentUser && currentUser !== adminId) {
+    query = db.collection("actividades")
+      .where("asignados", "array-contains", currentUser)
+      .orderBy("creada", "desc");
   }
 
-  lista.forEach(act => {
-    const card = document.createElement("div");
-    card.className = "tarea";
-    card.innerHTML = `
-      <h4>${act.titulo}</h4>
-      <p><b>Asignado:</b> ${act.asignado.join(", ")}</p>
-      <p><b>Fecha límite:</b> ${act.fecha}</p>
-      <p><b>Estado:</b> ${act.estado}</p>
-      <p>${act.comentario || ""}</p>
-    `;
-    contenedor.appendChild(card);
+  unsubscribeTareas = query.onSnapshot(snapshot => {
+    últimoSnapshot = snapshot; // para export
+    const lista = document.getElementById("listaTareas");
+    lista.innerHTML = "";
+    const tareasEmpleado = [];
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const id = doc.id;
+
+      // Fecha de actividad
+      let fechaActividad = null;
+      if (data.fecha) fechaActividad = new Date(data.fecha + "T00:00:00");
+
+      // Filtros
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
+      if (buscar) {
+        const inTitle = (data.titulo || "").toLowerCase().includes(buscar);
+        const inAsignados = (data.asignados || []).some(a => a.toLowerCase().includes(buscar));
+        if (!inTitle && !inAsignados) return;
+      }
+
+      // Control de visibilidad para empleados
+      const esAsignado = (data.asignados || []).includes(currentUser);
+      const fechaLimite = fechaActividad;
+      const visibleParaEmpleado = currentUser !== adminId && esAsignado && data.activo && (!fechaLimite || fechaLimite <= hoy);
+
+      if (!(currentUser === adminId || visibleParaEmpleado)) return;
+
+      if (esAsignado) tareasEmpleado.push({ ...data, id });
+
+      // Resto igual que antes...
+      const div = document.createElement("div");
+      div.className = `tarea ${data.estado || "pendiente"}`;
+      const vencida = fechaLimite && fechaLimite < hoy;
+      if (vencida && data.estado !== "finalizado") div.classList.add("vencida");
+
+      const horaInicioText = data.horaInicio ? formatoFechaCampo(data.horaInicio) : "";
+      const horaFinText = data.horaFin ? formatoFechaCampo(data.horaFin) : "";
+
+      let accionesHTML = "";
+      if (esAsignado || currentUser === adminId) {
+        if (data.estado === "pendiente" && esAsignado) {
+          accionesHTML += `<div class="inline-field"><label>Hora inicio (opcional)</label><input type="datetime-local" id="horaInicio-${id}" /></div>`;
+          accionesHTML += `<button onclick="cambiarEstado('${id}','iniciado')">Iniciar</button>`;
+        }
+        if (data.estado === "iniciado" && esAsignado) {
+          accionesHTML += `<div class="inline-field"><label>Hora fin (opcional)</label><input type="datetime-local" id="horaFin-${id}" /></div>`;
+          accionesHTML += `<button onclick="cambiarEstado('${id}','finalizado')">Finalizar</button>`;
+        }
+        if (data.estado === "finalizado" && esAsignado) {
+          accionesHTML += `<button onclick="cambiarEstado('${id}','pendiente')">Reabrir</button>`;
+        }
+
+        accionesHTML += `<textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>`;
+        accionesHTML += `<button class="small" onclick="agregarComentario('${id}')">Comentar</button>`;
+      }
+
+      let adminHTML = "";
+      if (currentUser === adminId) {
+        adminHTML = `<div class="admin-controls">
+          <button onclick="toggleActivo('${id}', ${!data.activo})">${data.activo ? "Desactivar" : "Activar"}</button>
+          <button onclick="eliminarActividad('${id}')">Eliminar</button>
+        </div>`;
+      }
+
+      div.innerHTML = `
+        <h3>${escapeHtml(data.titulo)}</h3>
+        <p><strong>Asignados:</strong> ${escapeHtml((data.asignados||[]).join(", "))}</p>
+        <p><strong>Comentario:</strong> ${escapeHtml(data.comentario||"")}</p>
+        <p><strong>Estado:</strong> ${escapeHtml(data.estado)}</p>
+        ${data.fecha ? `<p><strong>Fecha límite:</strong> ${escapeHtml(data.fecha)} ${vencida ? "⚠️ Vencida" : ""}</p>` : ""}
+        ${horaInicioText ? `<p><strong>Hora inicio:</strong> ${horaInicioText}</p>` : ""}
+        ${horaFinText ? `<p><strong>Hora fin:</strong> ${horaFinText}</p>` : ""}
+        ${(data.comentarios||[]).map(c => `<p class="coment">🗨️ ${escapeHtml(c.usuario)}: ${escapeHtml(c.texto)}</p>`).join("")}
+        <div class="acciones">${accionesHTML}</div>
+        ${adminHTML}
+      `;
+      lista.appendChild(div);
+    });
+
+    if (currentUser !== adminId) mostrarProgreso(tareasEmpleado);
+  }, err => {
+    console.error("mostrarTareas onSnapshot:", err);
+    mostrarAlerta("❌ Error cargando tareas");
   });
 }
 
-function renderizarListaEmpleado(lista) {
-  const contenedor = document.getElementById("listaTareas");
-  contenedor.innerHTML = "";
+// ---------------- cambiarEstado con inputs manuales ----------------
+function cambiarEstado(id, nuevoEstado) {
+  const docRef = db.collection("actividades").doc(id);
+  const updateData = { estado: nuevoEstado };
 
-  if (!lista.length) {
-    contenedor.innerHTML = "<p>No tienes tareas asignadas</p>";
-    return;
+  if (nuevoEstado === "iniciado") {
+    const inputVal = document.getElementById(`horaInicio-${id}`)?.value;
+    updateData.horaInicio = inputVal ? firebase.firestore.Timestamp.fromDate(new Date(inputVal)) : firebase.firestore.Timestamp.fromDate(new Date());
+  } else if (nuevoEstado === "finalizado") {
+    const inputVal = document.getElementById(`horaFin-${id}`)?.value;
+    updateData.horaFin = inputVal ? firebase.firestore.Timestamp.fromDate(new Date(inputVal)) : firebase.firestore.Timestamp.fromDate(new Date());
+  } else if (nuevoEstado === "pendiente") {
+    updateData.horaInicio = null;
+    updateData.horaFin = null;
   }
 
-  lista.forEach(act => {
-    const card = document.createElement("div");
-    card.className = "tarea";
-    card.innerHTML = `
-      <h4>${act.titulo}</h4>
-      <p><b>Fecha límite:</b> ${act.fecha}</p>
-      <p><b>Estado:</b> ${act.estado}</p>
-      <p>${act.comentario || ""}</p>
-      ${act.estado === "pendiente" ? `<button onclick="marcarComoCompletada('${act.id}')">Marcar como completada</button>` : ""}
-    `;
-    contenedor.appendChild(card);
-  });
+  docRef.update(updateData)
+    .then(() => mostrarAlerta(`✅ Estado actualizado a ${nuevoEstado}`))
+    .catch(err => {
+      console.error("Error cambiarEstado:", err);
+      mostrarAlerta("❌ Error al cambiar estado");
+    });
 }
 
-// =========================
-// ACTUALIZAR ESTADO EMPLEADO
-// =========================
-function marcarComoCompletada(id) {
+// ---------------- Comentarios ----------------
+function agregarComentario(id) {
+  const textarea = document.getElementById(`comentario-${id}`);
+  if (!textarea) return mostrarAlerta("⚠️ Campo comentario no encontrado");
+  const texto = textarea.value.trim();
+  if (!texto) return mostrarAlerta("⚠️ Escribe un comentario");
   db.collection("actividades").doc(id).update({
-    estado: "finalizada",
-    historial: firebase.firestore.FieldValue.arrayUnion({
-      usuario: usuarioActual,
-      accion: "finalizó la tarea",
-      fecha: firebase.firestore.Timestamp.now()
+    comentarios: firebase.firestore.FieldValue.arrayUnion({
+      usuario: currentUser || "anon",
+      texto
     })
   }).then(() => {
-    mostrarAlerta("Tarea completada", "success");
+    textarea.value = "";
+    mostrarAlerta("🗨️ Comentario agregado");
+  }).catch(err => {
+    console.error("Error agregarComentario:", err);
+    mostrarAlerta("❌ Error al agregar comentario");
   });
 }
 
-// =========================
-// GRÁFICOS ADMIN
-// =========================
-function renderizarGraficoAdmin(lista) {
-  const ctx = document.getElementById("graficoCumplidas").getContext("2d");
-  const total = lista.length;
-  const finalizadas = lista.filter(a => a.estado === "finalizada").length;
-  const pendientes = total - finalizadas;
-
-  new Chart(ctx, {
-    type: "doughnut",
-    data: {
-      labels: ["Finalizadas", "Pendientes"],
-      datasets: [{
-        data: [finalizadas, pendientes],
-        backgroundColor: ["#4CAF50", "#F44336"]
-      }]
-    },
-    options: { responsive: true }
-  });
+// ---------------- Toggle activo / eliminar ----------------
+function toggleActivo(id, estado) {
+  db.collection("actividades").doc(id).update({ activo: estado })
+    .then(() => mostrarAlerta(estado ? "✅ Activada" : "✅ Desactivada"))
+    .catch(err => { console.error(err); mostrarAlerta("❌ Error"); });
 }
 
-// =========================
-// ALERTAS
-// =========================
-function mostrarAlerta(mensaje, tipo = "info") {
-  const cont = document.getElementById("alerta-container");
-  const div = document.createElement("div");
-  div.className = `alerta ${tipo}`;
-  div.textContent = mensaje;
-  cont.appendChild(div);
-  setTimeout(() => div.remove(), 3000);
-}
-// =========================
-// FILTROS Y BÚSQUEDA
-// =========================
-function filtrarPorFecha(fecha) {
-  if (!fecha) {
-    renderizarLista(actividadesGlobal);
-    return;
-  }
-  const filtradas = actividadesGlobal.filter(a => a.fecha === fecha);
-  if (usuarioActual === "0001") {
-    renderizarLista(filtradas);
-    renderizarGraficoAdmin(filtradas);
-  } else {
-    renderizarListaEmpleado(filtradas);
-  }
-}
-
-function buscarTareas(texto) {
-  const t = texto.toLowerCase();
-  const filtradas = actividadesGlobal.filter(a =>
-    a.titulo.toLowerCase().includes(t) ||
-    a.comentario?.toLowerCase().includes(t) ||
-    a.asignado.some(asg => asg.toLowerCase().includes(t))
-  );
-
-  if (usuarioActual === "0001") {
-    renderizarLista(filtradas);
-    renderizarGraficoAdmin(filtradas);
-  } else {
-    renderizarListaEmpleado(filtradas);
-  }
-}
-
-// =========================
-// EXPORTAR CSV
-// =========================
-function exportarCSV() {
-  if (!actividadesGlobal.length) {
-    mostrarAlerta("No hay datos para exportar", "error");
-    return;
-  }
-  let csv = "Título,Asignado,Fecha,Estado,Comentario\n";
-  actividadesGlobal.forEach(a => {
-    csv += `"${a.titulo}","${a.asignado.join(", ")}","${a.fecha}","${a.estado}","${a.comentario || ""}"\n`;
-  });
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.setAttribute("download", "actividades.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-// =========================
-// EXPORTAR PDF
-// =========================
-function exportarPDF() {
-  if (!actividadesGlobal.length) {
-    mostrarAlerta("No hay datos para exportar", "error");
-    return;
-  }
-  const doc = new jspdf.jsPDF();
-  doc.setFontSize(14);
-  doc.text("Reporte de Actividades", 10, 10);
-
-  let y = 20;
-  actividadesGlobal.forEach((a, i) => {
-    doc.text(`${i + 1}. ${a.titulo} | ${a.asignado.join(", ")} | ${a.fecha} | ${a.estado}`, 10, y);
-    y += 8;
-    if (y > 270) {
-      doc.addPage();
-      y = 20;
-    }
-  });
-
-  doc.save("actividades.pdf");
-}
-
-// =========================
-// ELIMINAR ACTIVIDAD (ADMIN)
-// =========================
 function eliminarActividad(id) {
-  if (confirm("¿Seguro que quieres eliminar esta actividad?")) {
-    db.collection("actividades").doc(id).delete()
-      .then(() => mostrarAlerta("Actividad eliminada", "success"));
-  }
+  if (!confirm("¿Eliminar actividad?")) return;
+  db.collection("actividades").doc(id).delete()
+    .then(() => mostrarAlerta("✅ Eliminada"))
+    .catch(err => { console.error(err); mostrarAlerta("❌ Error al eliminar"); });
 }
 
-// =========================
-// MARCAR COMO PENDIENTE (ADMIN)
-// =========================
-function marcarComoPendiente(id) {
-  db.collection("actividades").doc(id).update({ estado: "pendiente" })
-    .then(() => mostrarAlerta("Actividad marcada como pendiente", "success"));
+// ---------------- Progreso ----------------
+function mostrarProgreso(tareas) {
+  const cont = document.getElementById("progresoEmpleado");
+  if (!cont) return;
+  const total = tareas.length;
+  const fin = tareas.filter(t => t.estado === "finalizado").length;
+  const pct = total ? Math.round((fin/total)*100) : 0;
+  cont.classList.remove("hidden");
+  cont.innerHTML = `<h2>Progreso: ${fin} / ${total} (${pct}%)</h2>
+    <div class="bar"><div style="width:${pct}%;background:${pct<50?'#dc3545':pct<80?'#ffc107':'#28a745'}"></div></div>`;
 }
 
-// =========================
-// EVENTOS UI
-// =========================
-document.getElementById("btnGuardar").addEventListener("click", guardarActividad);
-document.getElementById("btnExportarCSV").addEventListener("click", exportarCSV);
-document.getElementById("btnExportarPDF").addEventListener("click", exportarPDF);
-document.getElementById("btnLogout").addEventListener("click", logout);
+function mostrarProgresoAdmin() {
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
-document.getElementById("filtroFecha").addEventListener("change", (e) => filtrarPorFecha(e.target.value));
-document.getElementById("buscar").addEventListener("input", (e) => buscarTareas(e.target.value));
+  db.collection("actividades").onSnapshot(snapshot => {
+    const progreso = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      // date filter
+      let fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
+      (data.asignados||[]).forEach(emp => {
+        progreso[emp] = progreso[emp] || { total:0, finalizadas:0 };
+        progreso[emp].total++;
+        if (data.estado === "finalizado") progreso[emp].finalizadas++;
+      });
+    });
+
+    const cont = document.getElementById("progresoAdmin");
+    if (!cont) return;
+    cont.innerHTML = "<h2>Progreso por empleado</h2>";
+    Object.keys(progreso).forEach(emp => {
+      const p = progreso[emp];
+      const pct = p.total ? Math.round((p.finalizadas/p.total)*100) : 0;
+      cont.innerHTML += `<div class="emp-row"><strong>${escapeHtml(emp)}</strong> - ${p.finalizadas}/${p.total} (${pct}%)<div class="bar"><div style="width:${pct}%;background:${pct<50?'#dc3545':pct<80?'#ffc107':'#28a745'}"></div></div></div>`;
+    });
+  });
+}
+
+// ---------------- Gráfica ----------------
+function cargarGrafico() {
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
+
+  db.collection("actividades").onSnapshot(snapshot => {
+    const counts = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      // date filter
+      const fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
+      if (data.estado === "finalizado") {
+        (data.asignados||[]).forEach(emp => {
+          counts[emp] = (counts[emp] || 0) + 1;
+        });
+      }
+    });
+
+    const labels = Object.keys(counts);
+    const values = labels.map(l => counts[l]);
+
+    const canvas = document.getElementById("graficoCumplidas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (graficoRef) graficoRef.destroy();
+    graficoRef = new Chart(ctx, {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Tareas finalizadas", data: values, backgroundColor: labels.map(l=>colorForKey(l)) }] },
+      options: { responsive:true, plugins:{legend:{display:false}} }
+    });
+  });
+}
+
+// ---------------- Export CSV / PDF ----------------
+function exportarCSV() {
+  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
+  const rows = [["id","titulo","asignados","estado","fecha","horaInicio","horaFin","comentarios"]];
+  últimoSnapshot.forEach(doc => {
+    const d = doc.data();
+    rows.push([
+      doc.id,
+      d.titulo || "",
+      (d.asignados||[]).join("|"),
+      d.estado || "",
+      d.fecha || "",
+      d.horaInicio ? formatoFechaCampo(d.horaInicio) : "",
+      d.horaFin ? formatoFechaCampo(d.horaFin) : "",
+      (d.comentarios||[]).map(c=>`${c.usuario}:${c.texto}`).join(" | ")
+    ]);
+  });
+  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `actividades_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+  mostrarAlerta("✅ CSV generado");
+}
+
+async function exportarPDF() {
+  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
+  // Usamos jsPDF
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(12);
+  let y = 12;
+  doc.text("Export Actividades - TENORIO3G", 10, y); y+=8;
+  últimoSnapshot.forEach(docSnap => {
+    const d = docSnap.data();
+    const line = `${d.titulo || ""} | ${ (d.asignados||[]).join(", ") } | ${d.estado || ""} | ${d.fecha || ""}`;
+    if (y > 270) { doc.addPage(); y = 12; }
+    doc.text(line, 10, y); y += 6;
+  });
+  doc.save(`actividades_${Date.now()}.pdf`);
+  mostrarAlerta("✅ PDF generado");
+}
+
+// ---------------- Utilities ----------------
+function escapeHtml(s="") {
+  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+
+const palette = ["#007bff","#28a745","#ff5722","#6f42c1","#20c997","#fd7e14","#6610f2","#e83e8c","#17a2b8","#343a40"];
+const colorCache = {};
+function colorForKey(k) {
+  if (colorCache[k]) return colorCache[k];
+  const idx = Math.abs(hashCode(k)) % palette.length;
+  colorCache[k] = palette[idx];
+  return colorCache[k];
+}
+function hashCode(s) { let h=0; for(let i=0;i<s.length;i++){h=(h<<5)-h + s.charCodeAt(i); h|=0;} return h; }
+
+// ---------------- Init ----------------
+window.login = login;
+window.logout = logout;
+window.guardarActividad = guardarActividad;
+window.cambiarEstado = cambiarEstado;
+window.agregarComentario = agregarComentario;
+window.eliminarActividad = eliminarActividad;
+window.toggleActivo = toggleActivo;
+window.aplicarFiltros = aplicarFiltros;
+window.resetFiltros = resetFiltros;
+window.exportarCSV = exportarCSV;
+window.exportarPDF = exportarPDF;
+
+// Start listeners for graph/progress even before login (ok)
+cargarGrafico();
+mostrarProgresoAdmin();
