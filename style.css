@@ -100,7 +100,7 @@ button:hover {
   background-color: #0056b3;
 }
 .hidden {
-  display: none !important;
+  display: none;
 }
 .tarea {
   background: white;
