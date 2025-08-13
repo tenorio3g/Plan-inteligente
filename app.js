@@ -53,6 +53,7 @@ function toTimestampOrNull(d) {
 }
 
 // ---------------- Login / Logout ----------------
+// ---------------- Login / Logout ----------------
 function login() {
   const id = document.getElementById("employeeId").value.trim();
   if (!id) return mostrarAlerta("⚠️ Ingresa tu número de empleado");
@@ -78,21 +79,18 @@ function login() {
   aplicarFiltros();
 }
 
-function aplicarFiltros() {
-  mostrarTareas();
-  if (currentUser === adminId) {
-    cargarGrafico();
-    mostrarProgresoAdmin();
-  }
-}
-
 function logout() {
   currentUser = null;
+
+  // Mostrar login, ocultar paneles y lista
   document.getElementById("login").classList.remove("hidden");
+  document.getElementById("logout").classList.add("hidden");
   document.getElementById("adminPanel").classList.add("hidden");
   document.getElementById("listaTareas").classList.add("hidden");
-  document.getElementById("logout").classList.add("hidden");
+  document.getElementById("progresoEmpleado").classList.add("hidden");
+
   document.getElementById("listaTareas").innerHTML = "";
+
   mostrarAlerta("Sesión cerrada");
 }
 
