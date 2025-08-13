@@ -63,43 +63,18 @@ function login() {
   document.getElementById("login").classList.add("hidden");
   document.getElementById("logout").classList.remove("hidden");
 
-  // Si es admin, crear el panel en el DOM
   if (currentUser === adminId) {
-    const container = document.querySelector(".container");
-    const adminPanelHTML = `
-      <section id="adminPanel">
-        <h2>Asignar nueva tarea</h2>
-        <input type="text" id="titulo" placeholder="Título" />
-        <textarea id="comentario" placeholder="Comentario"></textarea>
-        <input type="text" id="asignado" placeholder="Asignar a (ej: 0002,0003,0004)" />
-        <label>Fecha límite:</label>
-        <input type="date" id="fecha" />
-        <label>¿Activar tarea ahora?</label>
-        <select id="activo">
-          <option value="false">No</option>
-          <option value="true">Sí</option>
-        </select>
-        <button onclick="guardarActividad()">Guardar</button>
-
-        <h2>Filtrar por fecha</h2>
-        <label>Desde:</label>
-        <input type="date" id="filtroDesde" />
-        <label>Hasta:</label>
-        <input type="date" id="filtroHasta" />
-        <button onclick="aplicarFiltros()">Filtrar tareas</button>
-        <button onclick="exportarCSV()">Exportar a CSV</button>
-
-        <canvas id="graficoCumplidas"></canvas>
-        <div id="progresoAdmin"></div>
-      </section>
-    `;
-    container.insertAdjacentHTML("beforeend", adminPanelHTML);
+    // Mostrar panel admin y lista de tareas
+    document.getElementById("adminPanel").classList.remove("hidden");
+    document.getElementById("listaTareas").classList.remove("hidden");
+    document.getElementById("progresoEmpleado").classList.add("hidden");
+  } else {
+    // Mostrar progreso empleado y lista de tareas
+    document.getElementById("progresoEmpleado").classList.remove("hidden");
+    document.getElementById("listaTareas").classList.remove("hidden");
+    document.getElementById("adminPanel").classList.add("hidden");
   }
 
-  // Mostrar lista de tareas (siempre)
-  document.getElementById("listaTareas").classList.remove("hidden");
-
-  // Aplicar filtros y cargar datos según rol
   aplicarFiltros();
 }
 
