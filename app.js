@@ -129,3 +129,69 @@ function renderizarLista() {
     contenedor.appendChild(div);
   });
 }
+// === PARTE 2 - ACCIONES SOBRE TAREAS ===
+
+// Función para marcar tarea como completada
+async function completarTarea(id) {
+  try {
+    await db.collection("actividades").doc(id).update({
+      completada: true
+    });
+    console.log(`Tarea ${id} completada`);
+  } catch (e) {
+    console.error("Error al completar tarea:", e);
+  }
+}
+
+// Renderizar tareas (parte visual)
+function renderizarTareas(lista, modo) {
+  const contenedor = document.getElementById("listaTareas");
+  contenedor.innerHTML = "";
+
+  if (lista.length === 0) {
+    contenedor.innerHTML = "<p>No hay tareas disponibles.</p>";
+    return;
+  }
+
+  lista.forEach(t => {
+    const card = document.createElement("div");
+    card.classList.add("tarea-card");
+    if (t.completada) {
+      card.style.backgroundColor = "#d4edda"; // verde claro
+    }
+
+    const titulo = document.createElement("h4");
+    titulo.textContent = t.titulo || "(Sin título)";
+    card.appendChild(titulo);
+
+    const comentario = document.createElement("p");
+    comentario.textContent = t.comentario || "";
+    card.appendChild(comentario);
+
+    const fecha = document.createElement("small");
+    fecha.textContent = "Fecha límite: " + (t.fecha || "Sin fecha");
+    card.appendChild(fecha);
+
+    if (modo === "empleado" && !t.completada) {
+      const btnCompletar = document.createElement("button");
+      btnCompletar.textContent = "✅ Completar";
+      btnCompletar.onclick = () => completarTarea(t.id);
+      card.appendChild(btnCompletar);
+    }
+
+    contenedor.appendChild(card);
+  });
+}
+
+// === EVENTOS Y SESIÓN ===
+document.getElementById("logout").addEventListener("click", logout);
+
+function logout() {
+  usuarioActual = null;
+  actividadesGlobal = [];
+  document.getElementById("login").classList.remove("hidden");
+  document.getElementById("adminPanel").classList.add("hidden");
+  document.getElementById("progresoEmpleado").classList.add("hidden");
+  document.getElementById("listaTareas").innerHTML = "";
+  document.getElementById("logout").classList.add("hidden");
+}
