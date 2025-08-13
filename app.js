@@ -151,16 +151,15 @@ function resetFiltros() {
 let unsubscribeTareas = null; // para evitar duplicar listeners
 
 function mostrarTareas() {
-  const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
-  const desde = document.getElementById("filtroDesde")?.value || null;
-  const hasta = document.getElementById("filtroHasta")?.value || null;
-  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
-  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
+  // Eliminamos filtros temporales
+  // const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
+  // const desde = document.getElementById("filtroDesde")?.value || null;
+  // const hasta = document.getElementById("filtroHasta")?.value || null;
+  // const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  // const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
-  // Si ya hay un listener previo, lo cerramos para no duplicar
   if (unsubscribeTareas) unsubscribeTareas();
 
-  // Query base (admin: todas, empleado: solo asignadas)
   let query = db.collection("actividades").orderBy("creada", "desc");
   if (currentUser && currentUser !== adminId) {
     query = db.collection("actividades")
@@ -169,7 +168,7 @@ function mostrarTareas() {
   }
 
   unsubscribeTareas = query.onSnapshot(snapshot => {
-    últimoSnapshot = snapshot; // para export
+    últimoSnapshot = snapshot;
     const lista = document.getElementById("listaTareas");
     lista.innerHTML = "";
     const tareasEmpleado = [];
@@ -179,46 +178,24 @@ function mostrarTareas() {
       const data = doc.data();
       const id = doc.id;
 
-      // Fecha de actividad
-      let fechaActividad = null;
-      if (data.fecha) fechaActividad = new Date(data.fecha + "T00:00:00");
-
-      // Filtros
-      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
-      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
-
-      if (buscar) {
-        const inTitle = (data.titulo || "").toLowerCase().includes(buscar);
-        const inAsignados = (data.asignados || []).some(a => a.toLowerCase().includes(buscar));
-        if (!inTitle && !inAsignados) return;
-      }
-
-      // Control de visibilidad para empleados
+      // Solo filtro de visibilidad para empleado y admin
       const esAsignado = (data.asignados || []).includes(currentUser);
-      const fechaLimite = fechaActividad;
-      const visibleParaEmpleado = currentUser !== adminId && esAsignado && data.activo && (!fechaLimite || fechaLimite <= hoy);
+      const visibleParaEmpleado = currentUser !== adminId && esAsignado && data.activo;
 
       if (!(currentUser === adminId || visibleParaEmpleado)) return;
 
       if (esAsignado) tareasEmpleado.push({ ...data, id });
 
-      // Resto igual que antes...
+      // Construcción DOM igual
       const div = document.createElement("div");
       div.className = `tarea ${data.estado || "pendiente"}`;
-      const vencida = fechaLimite && fechaLimite < hoy;
-      if (vencida && data.estado !== "finalizado") div.classList.add("vencida");
-
-      const horaInicioText = data.horaInicio ? formatoFechaCampo(data.horaInicio) : "";
-      const horaFinText = data.horaFin ? formatoFechaCampo(data.horaFin) : "";
 
       let accionesHTML = "";
       if (esAsignado || currentUser === adminId) {
         if (data.estado === "pendiente" && esAsignado) {
-          accionesHTML += `<div class="inline-field"><label>Hora inicio (opcional)</label><input type="datetime-local" id="horaInicio-${id}" /></div>`;
           accionesHTML += `<button onclick="cambiarEstado('${id}','iniciado')">Iniciar</button>`;
         }
         if (data.estado === "iniciado" && esAsignado) {
-          accionesHTML += `<div class="inline-field"><label>Hora fin (opcional)</label><input type="datetime-local" id="horaFin-${id}" /></div>`;
           accionesHTML += `<button onclick="cambiarEstado('${id}','finalizado')">Finalizar</button>`;
         }
         if (data.estado === "finalizado" && esAsignado) {
@@ -240,15 +217,12 @@ function mostrarTareas() {
       div.innerHTML = `
         <h3>${escapeHtml(data.titulo)}</h3>
         <p><strong>Asignados:</strong> ${escapeHtml((data.asignados||[]).join(", "))}</p>
-        <p><strong>Comentario:</strong> ${escapeHtml(data.comentario||"")}</p>
         <p><strong>Estado:</strong> ${escapeHtml(data.estado)}</p>
-        ${data.fecha ? `<p><strong>Fecha límite:</strong> ${escapeHtml(data.fecha)} ${vencida ? "⚠️ Vencida" : ""}</p>` : ""}
-        ${horaInicioText ? `<p><strong>Hora inicio:</strong> ${horaInicioText}</p>` : ""}
-        ${horaFinText ? `<p><strong>Hora fin:</strong> ${horaFinText}</p>` : ""}
         ${(data.comentarios||[]).map(c => `<p class="coment">🗨️ ${escapeHtml(c.usuario)}: ${escapeHtml(c.texto)}</p>`).join("")}
         <div class="acciones">${accionesHTML}</div>
         ${adminHTML}
       `;
+
       lista.appendChild(div);
     });
 
@@ -258,6 +232,7 @@ function mostrarTareas() {
     mostrarAlerta("❌ Error cargando tareas");
   });
 }
+
 
 // ---------------- cambiarEstado con inputs manuales ----------------
 function cambiarEstado(id, nuevoEstado) {
