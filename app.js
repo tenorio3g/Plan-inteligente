@@ -310,6 +310,72 @@ function mostrarAlerta(mensaje) {
   setTimeout(() => alerta.remove(), 4000);
 }
 
+
+
+// ---------------- Export CSV / PDF ----------------
+function exportarCSV() {
+  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
+  const rows = [["id","titulo","asignados","estado","fecha","horaInicio","horaFin","comentarios"]];
+  últimoSnapshot.forEach(doc => {
+    const d = doc.data();
+    rows.push([
+      doc.id,
+      d.titulo || "",
+      (d.asignados||[]).join("|"),
+      d.estado || "",
+      d.fecha || "",
+      d.horaInicio ? formatoFechaCampo(d.horaInicio) : "",
+      d.horaFin ? formatoFechaCampo(d.horaFin) : "",
+      (d.comentarios||[]).map(c=>`${c.usuario}:${c.texto}`).join(" | ")
+    ]);
+  });
+  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `actividades_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+  mostrarAlerta("✅ CSV generado");
+}
+
+async function exportarPDF() {
+  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
+  // Usamos jsPDF
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(12);
+  let y = 12;
+  doc.text("Export Actividades - TENORIO3G", 10, y); y+=8;
+  últimoSnapshot.forEach(docSnap => {
+    const d = docSnap.data();
+    const line = `${d.titulo || ""} | ${ (d.asignados||[]).join(", ") } | ${d.estado || ""} | ${d.fecha || ""}`;
+    if (y > 270) { doc.addPage(); y = 12; }
+    doc.text(line, 10, y); y += 6;
+  });
+  doc.save(`actividades_${Date.now()}.pdf`);
+  mostrarAlerta("✅ PDF generado");
+}
+
+
+
+
+
+// ---------------- Utilities ----------------
+function escapeHtml(s="") {
+  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+
+const palette = ["#007bff","#28a745","#ff5722","#6f42c1","#20c997","#fd7e14","#6610f2","#e83e8c","#17a2b8","#343a40"];
+const colorCache = {};
+function colorForKey(k) {
+  if (colorCache[k]) return colorCache[k];
+  const idx = Math.abs(hashCode(k)) % palette.length;
+  colorCache[k] = palette[idx];
+  return colorCache[k];
+}
+function hashCode(s) { let h=0; for(let i=0;i<s.length;i++){h=(h<<5)-h + s.charCodeAt(i); h|=0;} return h; }
+
+
+
 // Exportar funciones al entorno global (HTML)
 window.login = login;
 window.logout = logout;
