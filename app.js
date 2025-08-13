@@ -13,7 +13,6 @@ const db = firebase.firestore();
 const adminId = "0001";
 let currentUser = null;
 let graficoRef = null;
-let últimoSnapshot = null; // para export
 
 function login() {
   const id = document.getElementById("employeeId").value.trim();
@@ -88,6 +87,11 @@ function mostrarTareas() {
   const hasta = document.getElementById('filtroHasta')?.value;
   const desdeFecha = desde ? new Date(desde) : null;
   const hastaFecha = hasta ? new Date(hasta) : null;
+    const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
+  const desde = document.getElementById("filtroDesde")?.value || null;
+  const hasta = document.getElementById("filtroHasta")?.value || null;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
   if (hastaFecha) hastaFecha.setHours(23,59,59,999);
 
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
