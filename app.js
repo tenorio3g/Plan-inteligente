@@ -1,4 +1,4 @@
-// app.js (versión optimizada con listener único y actualización optimista)
+// app.js (versión optimizada con exportar PDF)
 
 // ---------------- Firebase config ----------------
 const firebaseConfig = {
@@ -18,7 +18,6 @@ const adminId = "0001";
 let currentUser = null;
 let graficoRef = null;
 let últimoSnapshot = null; // para export
-let unsubscribeTareas = null; // para cancelar listener anterior
 
 // ---------------- Helpers ----------------
 function mostrarAlerta(text, ms = 3500) {
@@ -47,24 +46,11 @@ function formatoFechaCampo(f) {
 function toTimestampOrNull(d) {
   if (!d) return null;
   if (d instanceof Date) return firebase.firestore.Timestamp.fromDate(d);
+  // if it's ISO string
   const parsed = new Date(d);
   if (!isNaN(parsed)) return firebase.firestore.Timestamp.fromDate(parsed);
   return null;
 }
-
-function escapeHtml(s = "") {
-  return String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-}
-
-const palette = ["#007bff", "#28a745", "#ff5722", "#6f42c1", "#20c997", "#fd7e14", "#6610f2", "#e83e8c", "#17a2b8", "#343a40"];
-const colorCache = {};
-function colorForKey(k) {
-  if (colorCache[k]) return colorCache[k];
-  const idx = Math.abs(hashCode(k)) % palette.length;
-  colorCache[k] = palette[idx];
-  return colorCache[k];
-}
-function hashCode(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = (h << 5) - h + s.charCodeAt(i); h |= 0; } return h; }
 
 // ---------------- Login / Logout ----------------
 function login() {
@@ -118,7 +104,7 @@ function guardarActividad() {
     titulo,
     comentario,
     asignados,
-    fecha: fecha ? fecha : null,
+    fecha: fecha ? fecha : null, // almacenamos como string YYYY-MM-DD (compatible)
     estado: "pendiente",
     activo,
     horaInicio: null,
@@ -152,6 +138,7 @@ function aplicarFiltros() {
   }
 }
 
+
 function resetFiltros() {
   document.getElementById("filtroDesde").value = "";
   document.getElementById("filtroHasta").value = "";
@@ -159,49 +146,49 @@ function resetFiltros() {
   aplicarFiltros();
 }
 
-// ---------------- Mostrar tareas (listener único) ----------------
+// ---------------- Mostrar tareas (más eficiente) ----------------
 function mostrarTareas() {
-  if (unsubscribeTareas) unsubscribeTareas(); // Cancelar listener anterior
-
   const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
   const desde = document.getElementById("filtroDesde")?.value || null;
   const hasta = document.getElementById("filtroHasta")?.value || null;
   const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
   const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
+  // Si es empleado, podemos usar array-contains para reducir datos
   let query = db.collection("actividades").orderBy("creada", "desc");
   if (currentUser && currentUser !== adminId) {
     query = db.collection("actividades").where("asignados", "array-contains", currentUser).orderBy("creada", "desc");
   }
 
-  unsubscribeTareas = query.onSnapshot(snapshot => {
-    últimoSnapshot = snapshot;
+  query.onSnapshot(snapshot => {
+    últimoSnapshot = snapshot; // para export
     const lista = document.getElementById("listaTareas");
     lista.innerHTML = "";
     const tareasEmpleado = [];
-
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
 
     snapshot.forEach(doc => {
       const data = doc.data();
       const id = doc.id;
 
+      // safe fecha (string or timestamp)
       let fechaActividad = null;
       if (data.fecha) {
+        // data.fecha stored as "YYYY-MM-DD" string in this design
         fechaActividad = new Date(data.fecha + "T00:00:00");
       }
 
-      // Filtrado por fechas
+      // Aplica filtros de fecha si existen
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
-      // Filtro búsqueda
+      // Aplica búsqueda por texto (título o asignado)
       if (buscar) {
         const inTitle = (data.titulo || "").toLowerCase().includes(buscar);
         const inAsignados = (data.asignados || []).some(a => a.toLowerCase().includes(buscar));
         if (!inTitle && !inAsignados) return;
       }
 
+      const hoy = new Date(); hoy.setHours(0,0,0,0);
       const fechaLimite = fechaActividad;
       const esAsignado = (data.asignados || []).includes(currentUser);
       const visibleParaEmpleado = currentUser !== adminId && esAsignado && data.activo && (!fechaLimite || fechaLimite <= hoy);
@@ -210,20 +197,20 @@ function mostrarTareas() {
 
       if (esAsignado) tareasEmpleado.push({ ...data, id });
 
-      // Crear div tarea
+      // Build DOM
       const div = document.createElement("div");
       div.className = `tarea ${data.estado || "pendiente"}`;
-      div.setAttribute("data-id", id);
       const vencida = fechaLimite && fechaLimite < hoy;
       if (vencida && data.estado !== "finalizado") div.classList.add("vencida");
 
-      // Horas formato
+      // Mostrar horas (timestamp o Date)
       const horaInicioText = data.horaInicio ? formatoFechaCampo(data.horaInicio) : "";
       const horaFinText = data.horaFin ? formatoFechaCampo(data.horaFin) : "";
 
-      // Botones y inputs
+      // Build buttons + inputs conditionally
       let accionesHTML = "";
       if (esAsignado || currentUser === adminId) {
+        // show inputs for manual times when appropriate
         if (data.estado === "pendiente" && esAsignado) {
           accionesHTML += `<div class="inline-field"><label>Hora inicio (opcional)</label><input type="datetime-local" id="horaInicio-${id}" /></div>`;
           accionesHTML += `<button onclick="cambiarEstado('${id}','iniciado')">Iniciar</button>`;
@@ -240,7 +227,7 @@ function mostrarTareas() {
         accionesHTML += `<button class="small" onclick="agregarComentario('${id}')">Comentar</button>`;
       }
 
-      // Controles admin
+      // Admin controls
       let adminHTML = "";
       if (currentUser === adminId) {
         adminHTML = `<div class="admin-controls">
@@ -251,13 +238,13 @@ function mostrarTareas() {
 
       div.innerHTML = `
         <h3>${escapeHtml(data.titulo)}</h3>
-        <p><strong>Asignados:</strong> ${escapeHtml((data.asignados || []).join(", "))}</p>
-        <p><strong>Comentario:</strong> ${escapeHtml(data.comentario || "")}</p>
+        <p><strong>Asignados:</strong> ${escapeHtml((data.asignados||[]).join(", "))}</p>
+        <p><strong>Comentario:</strong> ${escapeHtml(data.comentario||"")}</p>
         <p><strong>Estado:</strong> ${escapeHtml(data.estado)}</p>
         ${data.fecha ? `<p><strong>Fecha límite:</strong> ${escapeHtml(data.fecha)} ${vencida ? "⚠️ Vencida" : ""}</p>` : ""}
         ${horaInicioText ? `<p><strong>Hora inicio:</strong> ${horaInicioText}</p>` : ""}
         ${horaFinText ? `<p><strong>Hora fin:</strong> ${horaFinText}</p>` : ""}
-        ${(data.comentarios || []).map(c => `<p class="coment">🗨️ ${escapeHtml(c.usuario)}: ${escapeHtml(c.texto)}</p>`).join("")}
+        ${ (data.comentarios||[]).map(c => `<p class="coment">🗨️ ${escapeHtml(c.usuario)}: ${escapeHtml(c.texto)}</p>`).join("")}
         <div class="acciones">${accionesHTML}</div>
         ${adminHTML}
       `;
@@ -271,7 +258,7 @@ function mostrarTareas() {
   });
 }
 
-// ---------------- cambiarEstado con actualización optimista ----------------
+// ---------------- cambiarEstado con inputs manuales ----------------
 function cambiarEstado(id, nuevoEstado) {
   const docRef = db.collection("actividades").doc(id);
   const updateData = { estado: nuevoEstado };
@@ -287,74 +274,12 @@ function cambiarEstado(id, nuevoEstado) {
     updateData.horaFin = null;
   }
 
-  // Actualización optimista en UI
-  actualizarEstadoUI(id, nuevoEstado, updateData.horaInicio, updateData.horaFin);
-
   docRef.update(updateData)
     .then(() => mostrarAlerta(`✅ Estado actualizado a ${nuevoEstado}`))
     .catch(err => {
       console.error("Error cambiarEstado:", err);
       mostrarAlerta("❌ Error al cambiar estado");
-      // En caso de error, recarga tareas para sincronizar UI
-      aplicarFiltros();
     });
-}
-
-function actualizarEstadoUI(id, nuevoEstado, horaInicio, horaFin) {
-  const tareaDiv = document.querySelector(`div.tarea[data-id='${id}']`);
-  if (!tareaDiv) return;
-
-  tareaDiv.classList.remove("pendiente", "iniciado", "finalizado");
-  tareaDiv.classList.add(nuevoEstado);
-
-  // Actualizar texto Estado
-  const estadoP = tareaDiv.querySelector("p strong:nth-of-type(2)") || tareaDiv.querySelector("p:nth-child(4)");
-  if (estadoP) {
-    // Busca <p><strong>Estado:</strong> texto</p> para cambiar el texto
-    const estadoElem = [...tareaDiv.querySelectorAll("p")].find(p => p.innerHTML.includes("<strong>Estado:</strong>"));
-    if (estadoElem) {
-      estadoElem.innerHTML = `<strong>Estado:</strong> ${escapeHtml(nuevoEstado)}`;
-    }
-  }
-
-  // Actualizar horas
-  // Eliminar si existen anteriores
-  const horaInicioP = [...tareaDiv.querySelectorAll("p")].find(p => p.innerHTML.includes("<strong>Hora inicio:</strong>"));
-  if (horaInicioP) horaInicioP.remove();
-  const horaFinP = [...tareaDiv.querySelectorAll("p")].find(p => p.innerHTML.includes("<strong>Hora fin:</strong>"));
-  if (horaFinP) horaFinP.remove();
-
-  if (horaInicio) {
-    const horaIniStr = formatoFechaCampo(horaInicio);
-    const p = document.createElement("p");
-    p.innerHTML = `<strong>Hora inicio:</strong> ${escapeHtml(horaIniStr)}`;
-    tareaDiv.insertBefore(p, tareaDiv.querySelector(".acciones"));
-  }
-  if (horaFin) {
-    const horaFinStr = formatoFechaCampo(horaFin);
-    const p = document.createElement("p");
-    p.innerHTML = `<strong>Hora fin:</strong> ${escapeHtml(horaFinStr)}`;
-    tareaDiv.insertBefore(p, tareaDiv.querySelector(".acciones"));
-  }
-
-  // Actualizar botones según nuevo estado (remplazar innerHTML de .acciones)
-  let accionesHTML = "";
-  if (nuevoEstado === "pendiente") {
-    accionesHTML += `<div class="inline-field"><label>Hora inicio (opcional)</label><input type="datetime-local" id="horaInicio-${id}" /></div>`;
-    accionesHTML += `<button onclick="cambiarEstado('${id}','iniciado')">Iniciar</button>`;
-  }
-  if (nuevoEstado === "iniciado") {
-    accionesHTML += `<div class="inline-field"><label>Hora fin (opcional)</label><input type="datetime-local" id="horaFin-${id}" /></div>`;
-    accionesHTML += `<button onclick="cambiarEstado('${id}','finalizado')">Finalizar</button>`;
-  }
-  if (nuevoEstado === "finalizado") {
-    accionesHTML += `<button onclick="cambiarEstado('${id}','pendiente')">Reabrir</button>`;
-  }
-  accionesHTML += `<textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>`;
-  accionesHTML += `<button class="small" onclick="agregarComentario('${id}')">Comentar</button>`;
-
-  const accionesDiv = tareaDiv.querySelector(".acciones");
-  if (accionesDiv) accionesDiv.innerHTML = accionesHTML;
 }
 
 // ---------------- Comentarios ----------------
@@ -391,37 +316,160 @@ function eliminarActividad(id) {
     .catch(err => { console.error(err); mostrarAlerta("❌ Error al eliminar"); });
 }
 
-
-
 // ---------------- Progreso ----------------
 function mostrarProgreso(tareas) {
-const progreso = document.getElementById("progreso");
-if (!progreso) return;
-const total = tareas.length;
-if (total === 0) {
-progreso.innerHTML = "No hay tareas asignadas";
-return;
-}
-const finalizadas = tareas.filter(t => t.estado === "finalizado").length;
-const porcentaje = Math.round((finalizadas / total) * 100);
-progreso.innerHTML = Tareas completadas: ${finalizadas} / ${total} (${porcentaje}%);
+  const cont = document.getElementById("progresoEmpleado");
+  if (!cont) return;
+  const total = tareas.length;
+  const fin = tareas.filter(t => t.estado === "finalizado").length;
+  const pct = total ? Math.round((fin/total)*100) : 0;
+  cont.classList.remove("hidden");
+  cont.innerHTML = `<h2>Progreso: ${fin} / ${total} (${pct}%)</h2>
+    <div class="bar"><div style="width:${pct}%;background:${pct<50?'#dc3545':pct<80?'#ffc107':'#28a745'}"></div></div>`;
 }
 
 function mostrarProgresoAdmin() {
-// Puedes implementar resumen para admin si quieres
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
+
+  db.collection("actividades").onSnapshot(snapshot => {
+    const progreso = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      // date filter
+      let fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
+      (data.asignados||[]).forEach(emp => {
+        progreso[emp] = progreso[emp] || { total:0, finalizadas:0 };
+        progreso[emp].total++;
+        if (data.estado === "finalizado") progreso[emp].finalizadas++;
+      });
+    });
+
+    const cont = document.getElementById("progresoAdmin");
+    if (!cont) return;
+    cont.innerHTML = "<h2>Progreso por empleado</h2>";
+    Object.keys(progreso).forEach(emp => {
+      const p = progreso[emp];
+      const pct = p.total ? Math.round((p.finalizadas/p.total)*100) : 0;
+      cont.innerHTML += `<div class="emp-row"><strong>${escapeHtml(emp)}</strong> - ${p.finalizadas}/${p.total} (${pct}%)<div class="bar"><div style="width:${pct}%;background:${pct<50?'#dc3545':pct<80?'#ffc107':'#28a745'}"></div></div></div>`;
+    });
+  });
 }
 
-// ---------------- Gráfico ----------------
+// ---------------- Gráfica ----------------
 function cargarGrafico() {
-// Implementa gráfico aquí, si quieres
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
+
+  db.collection("actividades").onSnapshot(snapshot => {
+    const counts = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      // date filter
+      const fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
+      if (data.estado === "finalizado") {
+        (data.asignados||[]).forEach(emp => {
+          counts[emp] = (counts[emp] || 0) + 1;
+        });
+      }
+    });
+
+    const labels = Object.keys(counts);
+    const values = labels.map(l => counts[l]);
+
+    const canvas = document.getElementById("graficoCumplidas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (graficoRef) graficoRef.destroy();
+    graficoRef = new Chart(ctx, {
+      type: "bar",
+      data: { labels, datasets: [{ label: "Tareas finalizadas", data: values, backgroundColor: labels.map(l=>colorForKey(l)) }] },
+      options: { responsive:true, plugins:{legend:{display:false}} }
+    });
+  });
 }
 
-// ---------------- Inicio ----------------
-document.getElementById("loginBtn").onclick = login;
-document.getElementById("logoutBtn").onclick = logout;
-document.getElementById("guardarBtn").onclick = guardarActividad;
-document.getElementById("buscarBtn").onclick = aplicarFiltros;
-document.getElementById("resetBtn").onclick = resetFiltros;
+// ---------------- Export CSV / PDF ----------------
+function exportarCSV() {
+  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
+  const rows = [["id","titulo","asignados","estado","fecha","horaInicio","horaFin","comentarios"]];
+  últimoSnapshot.forEach(doc => {
+    const d = doc.data();
+    rows.push([
+      doc.id,
+      d.titulo || "",
+      (d.asignados||[]).join("|"),
+      d.estado || "",
+      d.fecha || "",
+      d.horaInicio ? formatoFechaCampo(d.horaInicio) : "",
+      d.horaFin ? formatoFechaCampo(d.horaFin) : "",
+      (d.comentarios||[]).map(c=>`${c.usuario}:${c.texto}`).join(" | ")
+    ]);
+  });
+  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `actividades_export_${Date.now()}.csv`; a.click(); URL.revokeObjectURL(url);
+  mostrarAlerta("✅ CSV generado");
+}
 
-// Si quieres que muestre tareas automáticamente si ya está logueado
-// currentUser = adminId; aplicarFiltros();
+async function exportarPDF() {
+  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
+  // Usamos jsPDF
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(12);
+  let y = 12;
+  doc.text("Export Actividades - TENORIO3G", 10, y); y+=8;
+  últimoSnapshot.forEach(docSnap => {
+    const d = docSnap.data();
+    const line = `${d.titulo || ""} | ${ (d.asignados||[]).join(", ") } | ${d.estado || ""} | ${d.fecha || ""}`;
+    if (y > 270) { doc.addPage(); y = 12; }
+    doc.text(line, 10, y); y += 6;
+  });
+  doc.save(`actividades_${Date.now()}.pdf`);
+  mostrarAlerta("✅ PDF generado");
+}
+
+// ---------------- Utilities ----------------
+function escapeHtml(s="") {
+  return String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+
+const palette = ["#007bff","#28a745","#ff5722","#6f42c1","#20c997","#fd7e14","#6610f2","#e83e8c","#17a2b8","#343a40"];
+const colorCache = {};
+function colorForKey(k) {
+  if (colorCache[k]) return colorCache[k];
+  const idx = Math.abs(hashCode(k)) % palette.length;
+  colorCache[k] = palette[idx];
+  return colorCache[k];
+}
+function hashCode(s) { let h=0; for(let i=0;i<s.length;i++){h=(h<<5)-h + s.charCodeAt(i); h|=0;} return h; }
+
+// ---------------- Init ----------------
+window.login = login;
+window.logout = logout;
+window.guardarActividad = guardarActividad;
+window.cambiarEstado = cambiarEstado;
+window.agregarComentario = agregarComentario;
+window.eliminarActividad = eliminarActividad;
+window.toggleActivo = toggleActivo;
+window.aplicarFiltros = aplicarFiltros;
+window.resetFiltros = resetFiltros;
+window.exportarCSV = exportarCSV;
+window.exportarPDF = exportarPDF;
+
+// Start listeners for graph/progress even before login (ok)
+cargarGrafico();
+mostrarProgresoAdmin();
