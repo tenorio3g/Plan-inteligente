@@ -1,5 +1,3 @@
-// app.js (versión optimizada con exportar PDF)
-
 // ---------------- Firebase config ----------------
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
@@ -18,6 +16,7 @@ const adminId = "0001";
 let currentUser = null;
 let graficoRef = null;
 let últimoSnapshot = null; // para export
+let unsubscribeTareas = null; // para cerrar listeners previos
 
 // ---------------- Helpers ----------------
 function mostrarAlerta(text, ms = 3500) {
@@ -46,7 +45,6 @@ function formatoFechaCampo(f) {
 function toTimestampOrNull(d) {
   if (!d) return null;
   if (d instanceof Date) return firebase.firestore.Timestamp.fromDate(d);
-  // if it's ISO string
   const parsed = new Date(d);
   if (!isNaN(parsed)) return firebase.firestore.Timestamp.fromDate(parsed);
   return null;
@@ -59,27 +57,22 @@ function login() {
 
   currentUser = id;
 
-  // Ocultar login
   document.getElementById("login").classList.add("hidden");
-
-  // Mostrar logout
   document.getElementById("logout").classList.remove("hidden");
 
-  // Si es admin, mostrar panel completo
   if (currentUser === adminId) {
     document.getElementById("adminPanel").classList.remove("hidden");
     document.getElementById("listaTareas").classList.remove("hidden");
-    aplicarFiltros(); // Carga tareas, gráfico y progreso
-  } 
-  // Si es empleado, solo sus tareas y progreso personal
-  else {
+    aplicarFiltros();
+  } else {
     document.getElementById("listaTareas").classList.remove("hidden");
-    aplicarFiltros(); // Solo mostrará las tareas asignadas a él
+    aplicarFiltros();
   }
 }
 
 function logout() {
   currentUser = null;
+  if (unsubscribeTareas) unsubscribeTareas();
   document.getElementById("login").classList.remove("hidden");
   document.getElementById("adminPanel").classList.add("hidden");
   document.getElementById("listaTareas").classList.add("hidden");
@@ -104,7 +97,7 @@ function guardarActividad() {
     titulo,
     comentario,
     asignados,
-    fecha: fecha ? fecha : null, // almacenamos como string YYYY-MM-DD (compatible)
+    fecha: fecha ? fecha : null,
     estado: "pendiente",
     activo,
     horaInicio: null,
@@ -138,7 +131,6 @@ function aplicarFiltros() {
   }
 }
 
-
 function resetFiltros() {
   document.getElementById("filtroDesde").value = "";
   document.getElementById("filtroHasta").value = "";
@@ -146,10 +138,7 @@ function resetFiltros() {
   aplicarFiltros();
 }
 
-// ---------------- Mostrar tareas (más eficiente) ----------------
-// ---------------- Mostrar tareas (más eficiente) ----------------
-let unsubscribeTareas = null; // para evitar duplicar listeners
-
+// ---------------- Mostrar tareas ----------------
 function mostrarTareas() {
   const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
   const desde = document.getElementById("filtroDesde")?.value || null;
@@ -157,10 +146,8 @@ function mostrarTareas() {
   const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
   const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
-  // Si ya hay un listener previo, lo cerramos para no duplicar
   if (unsubscribeTareas) unsubscribeTareas();
 
-  // Query base (admin: todas, empleado: solo asignadas)
   let query = db.collection("actividades").orderBy("creada", "desc");
   if (currentUser && currentUser !== adminId) {
     query = db.collection("actividades")
@@ -169,7 +156,7 @@ function mostrarTareas() {
   }
 
   unsubscribeTareas = query.onSnapshot(snapshot => {
-    últimoSnapshot = snapshot; // para export
+    últimoSnapshot = snapshot;
     const lista = document.getElementById("listaTareas");
     lista.innerHTML = "";
     const tareasEmpleado = [];
@@ -179,11 +166,9 @@ function mostrarTareas() {
       const data = doc.data();
       const id = doc.id;
 
-      // Fecha de actividad
       let fechaActividad = null;
       if (data.fecha) fechaActividad = new Date(data.fecha + "T00:00:00");
 
-      // Filtros
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
@@ -193,7 +178,6 @@ function mostrarTareas() {
         if (!inTitle && !inAsignados) return;
       }
 
-      // Control de visibilidad para empleados
       const esAsignado = (data.asignados || []).includes(currentUser);
       const fechaLimite = fechaActividad;
       const visibleParaEmpleado = currentUser !== adminId && esAsignado && data.activo && (!fechaLimite || fechaLimite <= hoy);
@@ -202,7 +186,6 @@ function mostrarTareas() {
 
       if (esAsignado) tareasEmpleado.push({ ...data, id });
 
-      // Resto igual que antes...
       const div = document.createElement("div");
       div.className = `tarea ${data.estado || "pendiente"}`;
       const vencida = fechaLimite && fechaLimite < hoy;
@@ -259,7 +242,7 @@ function mostrarTareas() {
   });
 }
 
-// ---------------- cambiarEstado con inputs manuales ----------------
+// ---------------- cambiarEstado ----------------
 function cambiarEstado(id, nuevoEstado) {
   const docRef = db.collection("actividades").doc(id);
   const updateData = { estado: nuevoEstado };
@@ -339,7 +322,6 @@ function mostrarProgresoAdmin() {
     const progreso = {};
     snapshot.forEach(doc => {
       const data = doc.data();
-      // date filter
       let fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
@@ -373,7 +355,6 @@ function cargarGrafico() {
     const counts = {};
     snapshot.forEach(doc => {
       const data = doc.data();
-      // date filter
       const fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
@@ -399,6 +380,7 @@ function cargarGrafico() {
     });
   });
 }
+
 
 // ---------------- Export CSV / PDF ----------------
 function exportarCSV() {
