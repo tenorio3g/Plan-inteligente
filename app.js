@@ -13,6 +13,7 @@ const db = firebase.firestore();
 const adminId = "0001";
 let currentUser = null;
 let graficoRef = null;
+let últimoSnapshot = null;
 
 function login() {
   const id = document.getElementById("employeeId").value.trim();
@@ -90,6 +91,7 @@ function mostrarTareas() {
   if (hastaFecha) hastaFecha.setHours(23,59,59,999);
 
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
+    últimoSnapshot = snapshot;
     const lista = document.getElementById("listaTareas");
     lista.innerHTML = "";
     const tareasEmpleado = [];
@@ -369,6 +371,16 @@ function colorForKey(k) {
   return colorCache[k];
 }
 function hashCode(s) { let h=0; for(let i=0;i<s.length;i++){h=(h<<5)-h + s.charCodeAt(i); h|=0;} return h; }
+
+
+function formatoFechaCampo(valor) {
+  if (!valor) return "";
+  const fecha = valor.toDate ? valor.toDate() : new Date(valor);
+  return fecha.toLocaleString();
+}
+
+
+
 
 // ---------------- Init ----------------
 window.login = login;
