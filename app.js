@@ -147,95 +147,116 @@ function resetFiltros() {
 }
 
 // ---------------- Mostrar tareas (más eficiente) ----------------
-let tareasMap = new Map(); // Para tener referencias a los divs de cada tarea
-
 function mostrarTareas() {
-  const desde = document.getElementById('filtroDesde')?.value;
-  const hasta = document.getElementById('filtroHasta')?.value;
-  const desdeFecha = desde ? new Date(desde) : null;
-  const hastaFecha = hasta ? new Date(hasta) : null;
-  if (hastaFecha) hastaFecha.setHours(23,59,59,999);
+  const buscar = (document.getElementById("buscarTexto")?.value || "").trim().toLowerCase();
+  const desde = document.getElementById("filtroDesde")?.value || null;
+  const hasta = document.getElementById("filtroHasta")?.value || null;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
 
-  if (unsubscribeTareas) unsubscribeTareas();
+  // Si es empleado, podemos usar array-contains para reducir datos
+  let query = db.collection("actividades").orderBy("creada", "desc");
+  if (currentUser && currentUser !== adminId) {
+    query = db.collection("actividades").where("asignados", "array-contains", currentUser).orderBy("creada", "desc");
+  }
 
-  unsubscribeTareas = db.collection("actividades").orderBy("creada", "desc")
-    .onSnapshot(snapshot => {
-      const lista = document.getElementById("listaTareas");
+  query.onSnapshot(snapshot => {
+    últimoSnapshot = snapshot; // para export
+    const lista = document.getElementById("listaTareas");
+    lista.innerHTML = "";
+    const tareasEmpleado = [];
 
-      snapshot.docChanges().forEach(change => {
-        const doc = change.doc;
-        const id = doc.id;
-        const data = doc.data();
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const id = doc.id;
 
-        // Filtrado por fechas
-        const fechaActividad = data.fecha ? new Date(data.fecha) : null;
-        if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
-        if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+      // safe fecha (string or timestamp)
+      let fechaActividad = null;
+      if (data.fecha) {
+        // data.fecha stored as "YYYY-MM-DD" string in this design
+        fechaActividad = new Date(data.fecha + "T00:00:00");
+      }
 
-        // Procesar según tipo de cambio
-        if (change.type === "added" || change.type === "modified") {
-          // Crear o actualizar div
-          let div = tareasMap.get(id);
-          if (!div) {
-            div = document.createElement("div");
-            tareasMap.set(id, div);
-            lista.appendChild(div);
-          }
+      // Aplica filtros de fecha si existen
+      if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+      if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
 
-          // Actualizar contenido del div
-          div.className = `tarea ${data.estado}`;
-          const hoy = new Date(); hoy.setHours(0,0,0,0);
-          const fechaLimite = fechaActividad;
-          const vencida = fechaLimite && fechaLimite < hoy;
+      // Aplica búsqueda por texto (título o asignado)
+      if (buscar) {
+        const inTitle = (data.titulo || "").toLowerCase().includes(buscar);
+        const inAsignados = (data.asignados || []).some(a => a.toLowerCase().includes(buscar));
+        if (!inTitle && !inAsignados) return;
+      }
 
-          if (vencida && data.estado !== "finalizado") div.classList.add("vencida");
+      const hoy = new Date(); hoy.setHours(0,0,0,0);
+      const fechaLimite = fechaActividad;
+      const esAsignado = (data.asignados || []).includes(currentUser);
+      const visibleParaEmpleado = currentUser !== adminId && esAsignado && data.activo && (!fechaLimite || fechaLimite <= hoy);
 
-          const esAsignado = data.asignados?.includes(currentUser);
-          div.innerHTML = `
-            <h3>${data.titulo}</h3>
-            <p><strong>Asignados:</strong> ${data.asignados.join(", ")}</p>
-            <p><strong>Comentario inicial:</strong> ${data.comentario}</p>
-            <p><strong>Estado:</strong> ${data.estado}</p>
-            ${data.fecha ? `<p><strong>Fecha límite:</strong> ${data.fecha} ${vencida && data.estado !== "finalizado" ? "⚠️ Vencida" : ""}</p>` : ""}
-            ${data.horaInicio ? `<p><strong>Hora inicio:</strong> ${new Date(data.horaInicio.toDate ? data.horaInicio.toDate() : data.horaInicio).toLocaleString()}</p>` : ""}
-            ${data.horaFin ? `<p><strong>Hora fin:</strong> ${new Date(data.horaFin.toDate ? data.horaFin.toDate() : data.horaFin).toLocaleString()}</p>` : ""}
-            ${data.comentarios.map(c => `<p>🗨️ ${c.usuario}: ${c.texto}</p>`).join("")}
-            ${(esAsignado || currentUser === adminId) ? `
-              ${data.estado === "pendiente" && esAsignado ? `
-                <input type="datetime-local" id="horaInicio-${id}" />
-                <button onclick="cambiarEstado('${id}', 'iniciado')">Iniciar</button>
-              ` : ""}
-              ${data.estado !== "finalizado" && esAsignado ? `
-                <input type="datetime-local" id="horaFin-${id}" />
-                <button onclick="cambiarEstado('${id}', 'finalizado')">Finalizar</button>
-              ` : ""}
-              ${data.estado === "finalizado" && esAsignado ? `<button onclick="cambiarEstado('${id}', 'pendiente')">Reabrir</button>` : ""}
-              <textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>
-              <button onclick="agregarComentario('${id}')">Comentar</button>
-            ` : ""}
-            ${currentUser === adminId ? `
-              <button onclick="toggleActivo('${id}', ${!data.activo})">${data.activo ? "Desactivar" : "Activar"}</button>
-              <button onclick="eliminarActividad('${id}')">Eliminar</button>
-            ` : ""}
-          `;
+      if (!(currentUser === adminId || visibleParaEmpleado)) return;
 
-          // Si fue modificado, puedes también manejar animaciones o resaltar aquí.
+      if (esAsignado) tareasEmpleado.push({ ...data, id });
 
-        } else if (change.type === "removed") {
-          // Remover div si existe
-          let div = tareasMap.get(id);
-          if (div) {
-            div.remove();
-            tareasMap.delete(id);
-          }
+      // Build DOM
+      const div = document.createElement("div");
+      div.className = `tarea ${data.estado || "pendiente"}`;
+      const vencida = fechaLimite && fechaLimite < hoy;
+      if (vencida && data.estado !== "finalizado") div.classList.add("vencida");
+
+      // Mostrar horas (timestamp o Date)
+      const horaInicioText = data.horaInicio ? formatoFechaCampo(data.horaInicio) : "";
+      const horaFinText = data.horaFin ? formatoFechaCampo(data.horaFin) : "";
+
+      // Build buttons + inputs conditionally
+      let accionesHTML = "";
+      if (esAsignado || currentUser === adminId) {
+        // show inputs for manual times when appropriate
+        if (data.estado === "pendiente" && esAsignado) {
+          accionesHTML += `<div class="inline-field"><label>Hora inicio (opcional)</label><input type="datetime-local" id="horaInicio-${id}" /></div>`;
+          accionesHTML += `<button onclick="cambiarEstado('${id}','iniciado')">Iniciar</button>`;
         }
-      });
+        if (data.estado === "iniciado" && esAsignado) {
+          accionesHTML += `<div class="inline-field"><label>Hora fin (opcional)</label><input type="datetime-local" id="horaFin-${id}" /></div>`;
+          accionesHTML += `<button onclick="cambiarEstado('${id}','finalizado')">Finalizar</button>`;
+        }
+        if (data.estado === "finalizado" && esAsignado) {
+          accionesHTML += `<button onclick="cambiarEstado('${id}','pendiente')">Reabrir</button>`;
+        }
 
-      // Opcional: actualizar progreso si es necesario aquí
-      // ...
+        accionesHTML += `<textarea id="comentario-${id}" placeholder="Agregar comentario"></textarea>`;
+        accionesHTML += `<button class="small" onclick="agregarComentario('${id}')">Comentar</button>`;
+      }
+
+      // Admin controls
+      let adminHTML = "";
+      if (currentUser === adminId) {
+        adminHTML = `<div class="admin-controls">
+          <button onclick="toggleActivo('${id}', ${!data.activo})">${data.activo ? "Desactivar" : "Activar"}</button>
+          <button onclick="eliminarActividad('${id}')">Eliminar</button>
+        </div>`;
+      }
+
+      div.innerHTML = `
+        <h3>${escapeHtml(data.titulo)}</h3>
+        <p><strong>Asignados:</strong> ${escapeHtml((data.asignados||[]).join(", "))}</p>
+        <p><strong>Comentario:</strong> ${escapeHtml(data.comentario||"")}</p>
+        <p><strong>Estado:</strong> ${escapeHtml(data.estado)}</p>
+        ${data.fecha ? `<p><strong>Fecha límite:</strong> ${escapeHtml(data.fecha)} ${vencida ? "⚠️ Vencida" : ""}</p>` : ""}
+        ${horaInicioText ? `<p><strong>Hora inicio:</strong> ${horaInicioText}</p>` : ""}
+        ${horaFinText ? `<p><strong>Hora fin:</strong> ${horaFinText}</p>` : ""}
+        ${ (data.comentarios||[]).map(c => `<p class="coment">🗨️ ${escapeHtml(c.usuario)}: ${escapeHtml(c.texto)}</p>`).join("")}
+        <div class="acciones">${accionesHTML}</div>
+        ${adminHTML}
+      `;
+      lista.appendChild(div);
     });
-}
 
+    if (currentUser !== adminId) mostrarProgreso(tareasEmpleado);
+  }, err => {
+    console.error("mostrarTareas onSnapshot:", err);
+    mostrarAlerta("❌ Error cargando tareas");
+  });
+}
 
 // ---------------- cambiarEstado con inputs manuales ----------------
 function cambiarEstado(id, nuevoEstado) {
