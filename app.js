@@ -13,6 +13,7 @@ const db = firebase.firestore();
 const adminId = "0001";
 let currentUser = null;
 let graficoRef = null;
+let últimoSnapshot = null; // para export
 
 function login() {
   const id = document.getElementById("employeeId").value.trim();
