@@ -289,33 +289,6 @@ function cargarGrafico() {
 // Agrego solo funciones exportarCSV y exportarPDF + formato fecha
 
 
-function exportarCSV() {
-  if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
-  const rows = [["ID","Título","Asignados","Estado","Fecha límite","Hora inicio","Hora fin","Comentarios"]];
-  últimoSnapshot.forEach(doc => {
-    const d = doc.data();
-    rows.push([
-      doc.id,
-      d.titulo || "",
-      (d.asignados||[]).join("|"),
-      d.estado || "",
-      d.fecha || "",
-      d.horaInicio ? formatoFechaCampo(d.horaInicio) : "",
-      d.horaFin ? formatoFechaCampo(d.horaFin) : "",
-      (d.comentarios||[]).map(c=>\`\${c.usuario}:\${c.texto}\`).join(" | ")
-    ]);
-  });
-  const csv = rows.map(r => r.map(cell => \`"\${String(cell).replace(/"/g,'""')}"\`).join(",")).join("\n");
-  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = \`actividades_export_\${Date.now()}.csv\`;
-  a.click();
-  URL.revokeObjectURL(url);
-  mostrarAlerta("✅ CSV generado");
-}
-
 async function exportarPDF() {
   if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
 
@@ -333,6 +306,7 @@ async function exportarPDF() {
     { header: 'Comentarios', dataKey: 'comentarios' },
   ];
 
+  // Preparar datos para tabla
   const filas = [];
   últimoSnapshot.forEach(docSnap => {
     const d = docSnap.data();
@@ -344,13 +318,14 @@ async function exportarPDF() {
       fecha: d.fecha || '',
       horaInicio: d.horaInicio ? formatoFechaCampo(d.horaInicio) : '',
       horaFin: d.horaFin ? formatoFechaCampo(d.horaFin) : '',
-      comentarios: (d.comentarios || []).map(c => \`\${c.usuario}: \${c.texto}\`).join("\n")
+      comentarios: (d.comentarios || []).map(c => `${c.usuario}: ${c.texto}`).join("\n")
     });
   });
 
   doc.setFontSize(14);
   doc.text("Reporte de Actividades - TENORIO3G", 14, 15);
 
+  // AutoTable usa margins para no sobreponer texto
   doc.autoTable({
     startY: 22,
     head: [columnas.map(c => c.header)],
@@ -359,23 +334,24 @@ async function exportarPDF() {
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
     theme: 'striped',
     columnStyles: {
-      0: { cellWidth: 20 },
-      1: { cellWidth: 40 },
-      2: { cellWidth: 35 },
-      3: { cellWidth: 25 },
-      4: { cellWidth: 25 },
-      5: { cellWidth: 25 },
-      6: { cellWidth: 25 },
-      7: { cellWidth: 60 },
+      0: { cellWidth: 20 },  // ID
+      1: { cellWidth: 40 },  // Título
+      2: { cellWidth: 35 },  // Asignados
+      3: { cellWidth: 25 },  // Estado
+      4: { cellWidth: 25 },  // Fecha
+      5: { cellWidth: 25 },  // Hora inicio
+      6: { cellWidth: 25 },  // Hora fin
+      7: { cellWidth: 60 },  // Comentarios (mayor ancho)
     },
     didDrawPage: (data) => {
+      // Pie de página con número de página
       let str = "Página " + doc.internal.getNumberOfPages();
       doc.setFontSize(8);
       doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
     }
   });
 
-  doc.save(\`actividades_\${Date.now()}.pdf\`);
+  doc.save(`actividades_${Date.now()}.pdf`);
   mostrarAlerta("✅ PDF generado");
 }
 
