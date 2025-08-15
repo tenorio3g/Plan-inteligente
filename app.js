@@ -89,6 +89,8 @@ function mostrarTareas() {
   const desdeFecha = desde ? new Date(desde) : null;
   const hastaFecha = hasta ? new Date(hasta) : null;
   if (hastaFecha) hastaFecha.setHours(23,59,59,999);
+  const buscarTexto = document.getElementById("buscarTexto")?.value.trim().toLowerCase();
+
 
   db.collection("actividades").orderBy("creada", "desc").onSnapshot(snapshot => {
     últimoSnapshot = snapshot;
@@ -99,6 +101,13 @@ function mostrarTareas() {
     snapshot.forEach(doc => {
       const data = doc.data();
       const id = doc.id;
+      // Filtro por texto
+       if (buscarTexto) {
+          const tituloMatch = (data.titulo || "").toLowerCase().includes(buscarTexto);
+          const asignadoMatch = (data.asignados || []).some(emp => emp.toLowerCase().includes(buscarTexto));
+          if (!tituloMatch && !asignadoMatch) return; 
+        }
+
 
       const fechaActividad = data.fecha ? new Date(data.fecha) : null;
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
@@ -255,6 +264,8 @@ function cargarGrafico() {
   const hasta = document.getElementById('filtroHasta')?.value;
   const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
   const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
+  const buscarTexto = document.getElementById("buscarTexto")?.value.trim().toLowerCase();
+
 
   db.collection("actividades").onSnapshot(snapshot => {
     const counts = {};
@@ -264,6 +275,12 @@ function cargarGrafico() {
       const fechaActividad = data.fecha ? new Date(data.fecha + "T00:00:00") : null;
       if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
       if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+      if (buscarTexto) {
+        const tituloMatch = (data.titulo || "").toLowerCase().includes(buscarTexto);
+        const asignadoMatch = (data.asignados || []).some(emp => emp.toLowerCase().includes(buscarTexto));
+        if (!tituloMatch && !asignadoMatch) return;
+      }
+
 
       if (data.estado === "finalizado") {
         (data.asignados||[]).forEach(emp => {
@@ -291,69 +308,100 @@ function cargarGrafico() {
 // Agrego solo funciones exportarCSV y exportarPDF + formato fecha
 
 
-  function exportarPDF() {
+function exportarPDF() {
   if (!últimoSnapshot) return mostrarAlerta("⚠️ No hay datos para exportar aún");
 
-const doc = new window.jspdf.jsPDF();
+  // Filtros activos
+  const buscarTexto = document.getElementById("buscarTexto")?.value.trim().toLowerCase();
+  const desde = document.getElementById('filtroDesde')?.value;
+  const hasta = document.getElementById('filtroHasta')?.value;
+  const desdeFecha = desde ? new Date(desde + "T00:00:00") : null;
+  const hastaFecha = hasta ? new Date(hasta + "T23:59:59") : null;
+
+  // PDF en horizontal
+  const doc = new window.jspdf.jsPDF({ orientation: "landscape" });
 
   const columnas = [
-    { header: 'ID', dataKey: 'id' },
     { header: 'Título', dataKey: 'titulo' },
     { header: 'Asignados', dataKey: 'asignados' },
     { header: 'Estado', dataKey: 'estado' },
     { header: 'Fecha límite', dataKey: 'fecha' },
     { header: 'Hora inicio', dataKey: 'horaInicio' },
     { header: 'Hora fin', dataKey: 'horaFin' },
+    { header: 'Comentario inicial', dataKey: 'comentarioInicial' },
     { header: 'Comentarios', dataKey: 'comentarios' },
   ];
 
-  // Preparar datos para tabla
+  // Filtrar y preparar datos
   const filas = [];
   últimoSnapshot.forEach(docSnap => {
     const d = docSnap.data();
+
+    // Filtro de fechas
+    const fechaActividad = d.fecha ? new Date(d.fecha + "T00:00:00") : null;
+    if (desdeFecha && (!fechaActividad || fechaActividad < desdeFecha)) return;
+    if (hastaFecha && (!fechaActividad || fechaActividad > hastaFecha)) return;
+
+    // Filtro de texto
+    if (buscarTexto) {
+      const tituloMatch = (d.titulo || "").toLowerCase().includes(buscarTexto);
+      const asignadoMatch = (d.asignados || []).some(emp => emp.toLowerCase().includes(buscarTexto));
+      if (!tituloMatch && !asignadoMatch) return;
+    }
+
     filas.push({
-      id: docSnap.id,
       titulo: d.titulo || '',
       asignados: (d.asignados || []).join(", "),
       estado: d.estado || '',
       fecha: d.fecha || '',
       horaInicio: d.horaInicio ? formatoFechaCampo(d.horaInicio) : '',
       horaFin: d.horaFin ? formatoFechaCampo(d.horaFin) : '',
+      comentarioInicial: d.comentario || '',
       comentarios: (d.comentarios || []).map(c => `${c.usuario}: ${c.texto}`).join("\n")
     });
   });
 
+  // Título
   doc.setFontSize(14);
   doc.text("Reporte de Actividades - TENORIO3G", 14, 15);
 
-  // AutoTable usa margins para no sobreponer texto
+  // Tabla
   doc.autoTable({
     startY: 22,
     head: [columnas.map(c => c.header)],
     body: filas.map(f => columnas.map(c => f[c.dataKey])),
-    styles: { fontSize: 8, cellPadding: 2 },
+    styles: { fontSize: 8, cellPadding: 2, valign: "top" },
     headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
     theme: 'striped',
     columnStyles: {
-      0: { cellWidth: 20 },  // ID
-      1: { cellWidth: 40 },  // Título
-      2: { cellWidth: 35 },  // Asignados
-      3: { cellWidth: 25 },  // Estado
-      4: { cellWidth: 25 },  // Fecha
-      5: { cellWidth: 25 },  // Hora inicio
-      6: { cellWidth: 25 },  // Hora fin
-      7: { cellWidth: 60 },  // Comentarios (mayor ancho)
+      0: { cellWidth: 40 }, // Título
+      1: { cellWidth: 25 }, // Asignados
+      2: { cellWidth: 20 }, // Estado
+      3: { cellWidth: 22 }, // Fecha
+      4: { cellWidth: 25 }, // Hora inicio
+      5: { cellWidth: 25 }, // Hora fin
+      6: { cellWidth: 50 }, // Comentario inicial
+      7: { cellWidth: 80 }, // Comentarios
     },
     didDrawPage: (data) => {
-      // Pie de página con número de página
+      // Pie de página
       let str = "Página " + doc.internal.getNumberOfPages();
       doc.setFontSize(8);
-      doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+      doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 5);
     }
   });
 
+  // Añadir gráfica al final
+  const canvas = document.getElementById("graficoCumplidas");
+  if (canvas) {
+    const imgData = canvas.toDataURL("image/png", 1.0);
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.addImage(imgData, 'PNG', 14, finalY, 260, 100); // ancho y alto ajustados
+  }
+
+  // Guardar
   doc.save(`actividades_${Date.now()}.pdf`);
-  mostrarAlerta("✅ PDF generado");
+  mostrarAlerta("✅ PDF generado con filtros y gráfica");
 }
 
 // ---------------- Utilities ----------------
